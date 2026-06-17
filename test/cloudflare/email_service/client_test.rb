@@ -102,6 +102,11 @@ class ClientTest < CFTestCase
     assert_raises(ES::NetworkError) { send_basic }
   end
 
+  def test_send_email_raises_network_error_on_tls_failure
+    stub_request(:post, URL).to_raise(OpenSSL::SSL::SSLError.new("handshake failure"))
+    assert_raises(ES::NetworkError) { send_basic }
+  end
+
   def test_send_email_validates_before_sending
     assert_raises(ES::ValidationError) do
       client.send_email(from: "a@x.com", to: "b@y.com", subject: "Hi")

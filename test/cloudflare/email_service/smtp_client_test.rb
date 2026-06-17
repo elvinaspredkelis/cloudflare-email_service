@@ -124,6 +124,13 @@ class SMTPClientTest < CFTestCase
     end
   end
 
+  def test_send_email_maps_tls_error_to_network_error
+    smtp = client
+    smtp.stub(:transmit, ->(_e) { raise OpenSSL::SSL::SSLError, "handshake failure" }) do
+      assert_raises(ES::NetworkError) { send_basic(smtp) }
+    end
+  end
+
   def test_send_email_validates_before_sending
     assert_raises(ES::ValidationError) do
       client.send_email(from: "a@x.com", to: "b@y.com", subject: "Hi")

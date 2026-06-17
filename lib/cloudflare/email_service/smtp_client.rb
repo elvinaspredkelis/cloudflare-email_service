@@ -54,7 +54,8 @@ module Cloudflare
         # Every other SMTP protocol error (busy, syntax, fatal, unknown, ...).
         raise ServerError, e.message
       rescue Timeout::Error, Errno::ECONNREFUSED, Errno::ECONNRESET,
-             Errno::EHOSTUNREACH, Errno::ETIMEDOUT, SocketError, IOError => e
+             Errno::EHOSTUNREACH, Errno::ETIMEDOUT, SocketError, IOError,
+             OpenSSL::SSL::SSLError => e
         raise NetworkError, "SMTP delivery failed: #{e.class}: #{e.message}"
       end
 
@@ -148,6 +149,7 @@ module Cloudflare
       def load_dependencies!
         require "mail"
         require "net/smtp"
+        require "openssl"
       rescue LoadError => e
         raise ConfigurationError,
               "the SMTP transport needs the `mail` gem — add `gem \"mail\"` " \

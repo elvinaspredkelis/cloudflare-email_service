@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require "net/http"
+require "openssl"
 require "json"
 require "uri"
 
@@ -58,7 +59,8 @@ module Cloudflare
 
         handle(http(uri).request(request))
       rescue Timeout::Error, Errno::ECONNREFUSED, Errno::ECONNRESET,
-             Errno::EHOSTUNREACH, Errno::ETIMEDOUT, SocketError, IOError => e
+             Errno::EHOSTUNREACH, Errno::ETIMEDOUT, SocketError, IOError,
+             OpenSSL::SSL::SSLError => e
         raise NetworkError, "request failed: #{e.class}: #{e.message}"
       end
 
