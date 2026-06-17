@@ -1,0 +1,66 @@
+AllCops:
+  TargetRubyVersion: 3.1
+  NewCops: enable
+  SuggestExtensions: false
+
+# This gem uses double-quoted strings and trailing commas in multiline
+# literals (the conventional `bundle gem` style).
+Style/StringLiterals:
+  EnforcedStyle: double_quotes
+
+Style/StringLiteralsInInterpolation:
+  EnforcedStyle: double_quotes
+
+Style/TrailingCommaInArguments:
+  EnforcedStyleForMultiline: comma
+
+Style/TrailingCommaInArrayLiteral:
+  EnforcedStyleForMultiline: comma
+
+Style/TrailingCommaInHashLiteral:
+  EnforcedStyleForMultiline: comma
+
+# Public API is documented inline; the blanket cop is too noisy.
+Style/Documentation:
+  Enabled: false
+
+# Development dependencies are declared in the gemspec, not the Gemfile.
+Gemspec/DevelopmentDependencies:
+  Enabled: false
+
+Metrics/CyclomaticComplexity:
+  Max: 8
+
+Layout/LineLength:
+  Max: 100
+  Exclude:
+    - "test/**/*"
+    - "*.gemspec"
+
+Metrics/MethodLength:
+  Max: 25
+  Exclude:
+    - "test/**/*"
+
+Metrics/AbcSize:
+  Max: 25
+  Exclude:
+    - "test/**/*"
+
+Metrics/ClassLength:
+  Max: 130
+  Exclude:
+    - "test/**/*"
+
+Metrics/BlockLength:
+  Exclude:
+    - "test/**/*"
+    - "*.gemspec"
+
+Metrics/ParameterLists:
+  Max: 11
+
+# Test method names embed HTTP status codes (e.g. ..._on_403).
+Naming/VariableNumber:
+  Exclude:
+    - "test/**/*"
