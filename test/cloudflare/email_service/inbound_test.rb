@@ -46,6 +46,13 @@ class InboundTest < Minitest::Test
     assert_equal :ok, verify(timestamp: edge, signature: signature(timestamp: edge))
   end
 
+  def test_handles_non_ascii_binary_body
+    # Raw email bytes > 127 (e.g. latin1) would crash UTF-8 interpolation.
+    body = "Subject: caf\xE9\r\n\r\nbody".b
+    sig = OpenSSL::HMAC.hexdigest("SHA256", SECRET, "#{NOW}.".b + body)
+    assert_equal :ok, verify(body: body, signature: sig)
+  end
+
   def test_missing_values_are_rejected
     assert_equal :bad_signature, verify(secret: "")
     assert_equal :bad_signature, verify(signature: "")

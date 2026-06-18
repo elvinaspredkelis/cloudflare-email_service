@@ -24,7 +24,11 @@ module Cloudflare
         return :bad_signature if [secret, timestamp, signature, body].any? { |v| v.to_s.empty? }
         return :stale if (now - timestamp.to_i).abs > REPLAY_WINDOW
 
-        expected = OpenSSL::HMAC.hexdigest("SHA256", secret.to_s, "#{timestamp}.#{body}")
+        # Build the signed payload in binary: raw RFC822 bodies carry bytes > 127
+        # (8bit transfer encoding, binary attachments), which would raise
+        # Encoding::CompatibilityError if interpolated into a UTF-8 string.
+        signed = "#{timestamp}.".b + body.to_s.b
+        expected = OpenSSL::HMAC.hexdigest("SHA256", secret.to_s, signed)
         secure_compare(expected, signature.to_s) ? :ok : :bad_signature
       end
 
