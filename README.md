@@ -91,8 +91,20 @@ no account id.
 
 ## Transports
 
-REST is the default and pulls in nothing beyond the standard library. To submit
-over SMTP (`smtp.mx.cloudflare.net:465`, implicit TLS) instead, flip one setting:
+Both transports accept the same `send_email` call and return the same
+`Response` — they differ only in how the message reaches Cloudflare. Choose one
+with `config.transport`.
+
+**REST** (`:rest`, the default) posts JSON to the Cloudflare API over HTTPS
+using only `net/http` from the standard library — no MIME assembly, no gems.
+Needs an `account_id` and an `Email Sending: Send` token. The right default for
+almost everything.
+
+**SMTP** (`:smtp`) submits over `smtp.mx.cloudflare.net:465` (implicit TLS), with
+MIME built by the [`mail`](https://rubygems.org/gems/mail) gem — loaded lazily,
+only when this transport is used. Needs an `Email Sending: Edit` token and no
+account id. Reach for it when your environment already speaks SMTP or only
+allows SMTP egress.
 
 ```ruby
 Cloudflare::EmailService.configure do |config|
