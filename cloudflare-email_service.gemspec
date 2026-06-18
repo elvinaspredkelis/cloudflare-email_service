@@ -6,7 +6,7 @@ Gem::Specification.new do |spec|
   spec.name = "cloudflare-email_service"
   spec.version = Cloudflare::EmailService::VERSION
   spec.authors = ["Elvinas Predkelis"]
-  spec.email = ["elvinas@trip1.com"]
+  spec.email = ["elvinas@primevise.com"]
 
   spec.summary = "Send and receive email through the Cloudflare Email Service."
   spec.description = "A small Ruby client for the Cloudflare Email Service with " \
