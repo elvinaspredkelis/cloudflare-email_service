@@ -33,8 +33,8 @@ module Cloudflare
       # Builds and sends a message. Accepts the same keyword arguments as
       # {Message#initialize}.
       # @return [Response]
-      def send_email(**kwargs)
-        deliver(Message.new(**kwargs))
+      def send_email(**)
+        deliver(Message.new(**))
       end
 
       # Sends a pre-built {Message}.

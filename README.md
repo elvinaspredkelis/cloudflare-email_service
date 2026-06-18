@@ -21,7 +21,7 @@ Developed at [Primevise](https://primevise.com).
 bundle add cloudflare-email_service
 ```
 
-Requires Ruby 3.1+. For the SMTP transport, also add the `mail` gem:
+Requires Ruby 3.2+. For the SMTP transport, also add the `mail` gem:
 
 ```
 bundle add mail

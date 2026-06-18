@@ -15,6 +15,8 @@ All notable changes to this project are documented here. The format is based on
   Rails-free; nothing loads unless the ingress is required.
 
 ### Changed
+- Require Ruby 3.2+ (Ruby 3.1 is end-of-life and the Rails 8 integration needs
+  3.2.2+).
 - The `:cloudflare` ActionMailer delivery method now registers automatically
   via a Railtie inside Rails — no `require "cloudflare/email_service/rails"`
   needed. Set `config.action_mailer.delivery_method = :cloudflare` and go;

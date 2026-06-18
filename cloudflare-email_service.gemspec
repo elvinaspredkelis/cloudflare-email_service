@@ -14,7 +14,7 @@ Gem::Specification.new do |spec|
                      "(ActionMailer delivery and Action Mailbox inbound)."
   spec.homepage = "https://github.com/elvinaspredkelis/cloudflare-email_service"
   spec.license = "MIT"
-  spec.required_ruby_version = ">= 3.1"
+  spec.required_ruby_version = ">= 3.2"
 
   spec.metadata["source_code_uri"] = spec.homepage
   spec.metadata["changelog_uri"] = "#{spec.homepage}/blob/main/CHANGELOG.md"
@@ -24,10 +24,8 @@ Gem::Specification.new do |spec|
   spec.require_paths = ["lib"]
 
   # `actionmailbox` (with `railties`) boots a real Rails app in the test suite
-  # to verify the optional inbound ingress loads and wires in correctly. Pinned
-  # to ">= 7.1" so Ruby 3.1 resolves Rails 7.x and Ruby 3.2+ pulls Rails 8+,
-  # giving the CI matrix multi-version coverage. Both are dev-only — the gem
-  # itself adds no Rails runtime dependency.
+  # to verify the inbound ingress loads and wires in correctly. Dev-only — the
+  # gem itself adds no Rails runtime dependency.
   spec.add_development_dependency "actionmailbox", ">= 7.1"
   # `actionmailer` lets the suite boot a real Rails app and confirm the Railtie
   # auto-registers the :cloudflare delivery method. Dev-only.

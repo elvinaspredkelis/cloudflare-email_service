@@ -51,8 +51,8 @@ module Cloudflare
       # Convenience: build a {Client} from the global config and send.
       # Accepts the same keyword arguments as {Message#initialize}.
       # @return [Response]
-      def send_email(**kwargs)
-        client.send_email(**kwargs)
+      def send_email(**)
+        client.send_email(**)
       end
 
       # Cloudflare SMTP submission settings, in the shape both {SMTPClient} and
