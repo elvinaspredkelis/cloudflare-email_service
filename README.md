@@ -154,8 +154,12 @@ config.action_mailer.smtp_settings   = Cloudflare::EmailService.smtp_settings(
 
 ### Inbound email (Action Mailbox)
 
-Receive mail too: a Cloudflare [Email Worker](https://developers.cloudflare.com/email-routing/email-workers/)
-forwards each message to a `:cloudflare`
+Receive mail too. Cloudflare delivers inbound mail to an app only through an
+[Email Worker](https://developers.cloudflare.com/email-routing/email-workers/),
+so first enable
+[Email Routing](https://developers.cloudflare.com/email-service/get-started/route-emails/)
+on your domain (it adds the MX/SPF/DKIM records). Then a Worker forwards each
+message to a `:cloudflare`
 [Action Mailbox](https://guides.rubyonrails.org/action_mailbox_basics.html)
 ingress that ships with the gem. Three steps:
 
@@ -178,9 +182,9 @@ The route `POST /rails/action_mailbox/cloudflare/inbound_emails` is registered
 for you, and every request is verified by an HMAC-SHA256 signature with replay
 protection.
 
-**3. Deploy an Email Worker** that signs and forwards each message. One ships
-with the gem — set your app URL and give it the same
-`CLOUDFLARE_EMAIL_INGRESS_SECRET`, then deploy:
+**3. Deploy an Email Worker** that signs and forwards each message, and bind it
+to an Email Routing rule (or catch-all). One ships with the gem — set your app
+URL and give it the same `CLOUDFLARE_EMAIL_INGRESS_SECRET`, then deploy:
 
 - In this repo: [`templates/cloudflare_email_worker.js`](templates/cloudflare_email_worker.js)
 - From the installed gem: `Cloudflare::EmailService.worker_template_path`
