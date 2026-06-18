@@ -178,44 +178,16 @@ The route `POST /rails/action_mailbox/cloudflare/inbound_emails` is registered
 for you, and every request is verified by an HMAC-SHA256 signature with replay
 protection.
 
-**3. Deploy an Email Worker** that signs and forwards the raw message (give it
-the same secret as `CLOUDFLARE_EMAIL_INGRESS_SECRET`):
+**3. Deploy an Email Worker** that signs and forwards each message. One ships
+with the gem — set your app URL and give it the same
+`CLOUDFLARE_EMAIL_INGRESS_SECRET`, then deploy:
 
-```js
-export default {
-  async email(message, env) {
-    // arrayBuffer (not text) preserves the raw bytes of non-UTF-8 messages.
-    const raw = new Uint8Array(await new Response(message.raw).arrayBuffer());
-    const ts = Math.floor(Date.now() / 1000).toString();
-
-    const key = await crypto.subtle.importKey(
-      "raw", new TextEncoder().encode(env.CLOUDFLARE_EMAIL_INGRESS_SECRET),
-      { name: "HMAC", hash: "SHA-256" }, false, ["sign"],
-    );
-    const signed = new Uint8Array([...new TextEncoder().encode(ts + "."), ...raw]);
-    const digest = await crypto.subtle.sign("HMAC", key, signed);
-    const sig = [...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, "0")).join("");
-
-    const response = await fetch("https://your-app.example.com/rails/action_mailbox/cloudflare/inbound_emails", {
-      method: "POST",
-      headers: {
-        "Content-Type": "message/rfc822",
-        "X-CF-Email-Timestamp": ts,
-        "X-CF-Email-Signature": sig,
-      },
-      body: raw,
-    });
-
-    // Reject on failure so Cloudflare bounces the message rather than silently
-    // accepting (and dropping) it.
-    if (!response.ok) message.setReject(`ingress error ${response.status}`);
-  },
-};
-```
+- In this repo: [`templates/cloudflare_email_worker.js`](templates/cloudflare_email_worker.js)
+- From the installed gem: `Cloudflare::EmailService.worker_template_path`
 
 > [!NOTE]
-> The Worker must send `Content-Type: message/rfc822`; the ingress rejects
-> anything else with `415 Unsupported Media Type`.
+> The Worker sends `Content-Type: message/rfc822`; the ingress rejects anything
+> else with `415 Unsupported Media Type`.
 
 ---
 

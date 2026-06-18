@@ -55,6 +55,14 @@ module Cloudflare
         client.send_email(**)
       end
 
+      # Absolute path to the shipped Cloudflare Email Worker template that signs
+      # and forwards inbound mail to the Action Mailbox ingress. Set your app URL
+      # and secret in it, then deploy it.
+      # @return [String]
+      def worker_template_path
+        File.expand_path("../../templates/cloudflare_email_worker.js", __dir__)
+      end
+
       # Cloudflare SMTP submission settings, in the shape both {SMTPClient} and
       # ActionMailer's built-in `:smtp` delivery method expect. Defaults come
       # from the global configuration; pass keywords to override.

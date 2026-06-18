@@ -15,6 +15,9 @@ All notable changes to this project are documented here. The format is based on
   (`CLOUDFLARE_EMAIL_INGRESS_SECRET` or the `cloudflare.ingress_secret`
   credential) and rejects stale timestamps to block replays. The core gem stays
   Rails-free; nothing loads unless the ingress is required.
+- A ready-to-deploy Cloudflare Email Worker ships with the gem at
+  `templates/cloudflare_email_worker.js`; find it locally via
+  `Cloudflare::EmailService.worker_template_path`.
 
 ### Changed
 - Require Ruby 3.2+ (Ruby 3.1 is end-of-life and the Rails 8 integration needs

@@ -20,7 +20,8 @@ Gem::Specification.new do |spec|
   spec.metadata["changelog_uri"] = "#{spec.homepage}/blob/main/CHANGELOG.md"
   spec.metadata["rubygems_mfa_required"] = "true"
 
-  spec.files = Dir.glob("lib/**/*.rb") + %w[README.md LICENSE.txt CHANGELOG.md]
+  spec.files = Dir.glob("lib/**/*.rb") + Dir.glob("templates/**/*.js") +
+               %w[README.md LICENSE.txt CHANGELOG.md]
   spec.require_paths = ["lib"]
 
   # `actionmailbox` (with `railties`) boots a real Rails app in the test suite
