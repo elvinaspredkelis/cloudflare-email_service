@@ -56,4 +56,10 @@ class ConfigurationTest < CFTestCase
 
     assert_raises(ES::ConfigurationError) { ES.client }
   end
+
+  def test_worker_template_path_points_to_shipped_file
+    path = ES.worker_template_path
+    assert_path_exists path
+    assert_includes File.read(path), "X-CF-Email-Signature"
+  end
 end

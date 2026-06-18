@@ -4,6 +4,34 @@ All notable changes to this project are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/), and this project adheres to
 [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Added
+- Optional, opt-in Action Mailbox ingress
+  (`require "cloudflare/email_service/action_mailbox"`) registering a
+  `:cloudflare` ingress at `POST /rails/action_mailbox/cloudflare/inbound_emails`.
+  A Cloudflare Email Worker forwards the raw RFC822 message, signed with
+  HMAC-SHA256 over `"<timestamp>.<body>"`; the ingress verifies the signature
+  (`CLOUDFLARE_EMAIL_INGRESS_SECRET` or the `cloudflare.ingress_secret`
+  credential) and rejects stale timestamps to block replays. The core gem stays
+  Rails-free; nothing loads unless the ingress is required.
+- A ready-to-deploy Cloudflare Email Worker ships with the gem at
+  `templates/cloudflare_email_worker.js`; find it locally via
+  `Cloudflare::EmailService.worker_template_path`.
+
+### Changed
+- Require Ruby 3.2+ (Ruby 3.1 is end-of-life and the Rails 8 integration needs
+  3.2.2+).
+- The `:cloudflare` ActionMailer delivery method now registers automatically
+  via a Railtie inside Rails — no `require "cloudflare/email_service/rails"`
+  needed. Set `config.action_mailer.delivery_method = :cloudflare` and go;
+  credentials are read from `CLOUDFLARE_ACCOUNT_ID` / `CLOUDFLARE_API_TOKEN`.
+
+### Fixed
+- `NetworkError` now also wraps TLS/SSL handshake failures
+  (`OpenSSL::SSL::SSLError`) on both transports, matching the documented error
+  contract.
+
 ## [0.0.1] - 2026-06-17
 
 ### Added

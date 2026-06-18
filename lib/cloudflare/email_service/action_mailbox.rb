@@ -1,0 +1,79 @@
+# frozen_string_literal: true
+
+require "cloudflare/email_service"
+require "cloudflare/email_service/inbound"
+
+# Opt-in Action Mailbox ingress: forwards inbound mail from a Cloudflare Email
+# Worker into Action Mailbox. Not loaded by the core gem — require it explicitly
+# and select it with `config.action_mailbox.ingress = :cloudflare`. The route is
+# registered automatically. See the README for setup and the Worker snippet.
+if defined?(ActionMailbox)
+  module ActionMailbox
+    module Ingresses
+      module Cloudflare
+        # Receives the raw RFC822 message a Cloudflare Email Worker forwards and
+        # hands it to Action Mailbox for routing. The Worker signs each request
+        # (HMAC-SHA256 over "<timestamp>.<body>"); we verify the signature and
+        # reject stale timestamps before accepting the message.
+        class InboundEmailsController < ActionMailbox::BaseController
+          before_action :verify_signature, :require_valid_rfc822_message
+
+          def create
+            if raw_body.empty?
+              head :unprocessable_entity
+            else
+              ActionMailbox::InboundEmail.create_and_extract_message_id!(raw_body)
+              head :no_content
+            end
+          end
+
+          private
+
+          def verify_signature
+            case ::Cloudflare::EmailService::Inbound.verify(
+              secret: signing_secret,
+              timestamp: request.headers["X-CF-Email-Timestamp"],
+              signature: request.headers["X-CF-Email-Signature"],
+              body: raw_body,
+            )
+            when :ok then nil
+            when :stale then head :request_timeout
+            else head :unauthorized
+            end
+          end
+
+          def require_valid_rfc822_message
+            return if request.media_type == "message/rfc822"
+
+            head :unsupported_media_type
+          end
+
+          # Read once, as binary, so the bytes match exactly what the Worker
+          # signed and what Action Mailbox stores.
+          def raw_body
+            @raw_body ||= begin
+              request.body.rewind if request.body.respond_to?(:rewind)
+              request.body.read.to_s.b
+            end
+          end
+
+          # Shared HMAC secret, from the environment or Rails credentials.
+          def signing_secret
+            ENV["CLOUDFLARE_EMAIL_INGRESS_SECRET"] ||
+              ::Rails.application.credentials.dig(:cloudflare, :ingress_secret).to_s
+          end
+        end
+      end
+    end
+  end
+
+  # Register the route so it works like the built-in ingresses. Guarded for
+  # non-Rails requires; add the route by hand if your boot order skips this.
+  if defined?(Rails) && Rails.respond_to?(:application) && Rails.application
+    Rails.application.routes.append do
+      post "/rails/action_mailbox/cloudflare/inbound_emails" =>
+             "action_mailbox/ingresses/cloudflare/inbound_emails#create",
+           as: :rails_cloudflare_inbound_emails
+    end
+  end
+end

@@ -21,7 +21,7 @@ Developed at [Primevise](https://primevise.com).
 bundle add cloudflare-email_service
 ```
 
-Requires Ruby 3.1+. For the SMTP transport, also add the `mail` gem:
+Requires Ruby 3.2+. For the SMTP transport, also add the `mail` gem:
 
 ```
 bundle add mail
@@ -91,8 +91,20 @@ no account id.
 
 ## Transports
 
-REST is the default and pulls in nothing beyond the standard library. To submit
-over SMTP (`smtp.mx.cloudflare.net:465`, implicit TLS) instead, flip one setting:
+Both transports accept the same `send_email` call and return the same
+`Response` — they differ only in how the message reaches Cloudflare. Choose one
+with `config.transport`.
+
+**REST** (`:rest`, the default) posts JSON to the Cloudflare API over HTTPS
+using only `net/http` from the standard library — no MIME assembly, no gems.
+Needs an `account_id` and an `Email Sending: Send` token. The right default for
+almost everything.
+
+**SMTP** (`:smtp`) submits over `smtp.mx.cloudflare.net:465` (implicit TLS), with
+MIME built by the [`mail`](https://rubygems.org/gems/mail) gem — loaded lazily,
+only when this transport is used. Needs an `Email Sending: Edit` token and no
+account id. Reach for it when your environment already speaks SMTP or only
+allows SMTP egress.
 
 ```ruby
 Cloudflare::EmailService.configure do |config|
@@ -109,14 +121,20 @@ end
 
 ## Rails
 
-The core gem is Rails-agnostic. Integration is opt-in — require it from an
-initializer to register a `:cloudflare` ActionMailer delivery method backed by
-whichever transport you configured:
+Adding the gem registers a `:cloudflare` delivery method automatically — just
+point ActionMailer at it. No require, no initializer:
+
+```ruby
+# config/environments/production.rb
+config.action_mailer.delivery_method = :cloudflare
+```
+
+Credentials come from `CLOUDFLARE_ACCOUNT_ID` / `CLOUDFLARE_API_TOKEN` in the
+environment. To set them in code (or pick the SMTP transport), add an
+initializer:
 
 ```ruby
 # config/initializers/cloudflare_email_service.rb
-require "cloudflare/email_service/rails"
-
 Cloudflare::EmailService.configure do |c|
   c.account_id = Rails.application.credentials.dig(:cloudflare, :account_id)
   c.api_token  = Rails.application.credentials.dig(:cloudflare, :api_token)
@@ -124,14 +142,8 @@ Cloudflare::EmailService.configure do |c|
 end
 ```
 
-```ruby
-# config/environments/production.rb
-config.action_mailer.delivery_method = :cloudflare
-```
-
 Your mailers then send through Cloudflare unchanged. Prefer ActionMailer's
-built-in `:smtp` delivery? Point it at Cloudflare with the settings helper — no
-adapter required:
+built-in `:smtp` delivery? Point it at Cloudflare with the settings helper:
 
 ```ruby
 config.action_mailer.delivery_method = :smtp
@@ -139,6 +151,47 @@ config.action_mailer.smtp_settings   = Cloudflare::EmailService.smtp_settings(
   api_token: Rails.application.credentials.dig(:cloudflare, :api_token),
 )
 ```
+
+### Inbound email (Action Mailbox)
+
+Receive mail too. Cloudflare delivers inbound mail to an app only through an
+[Email Worker](https://developers.cloudflare.com/email-routing/email-workers/),
+so first enable
+[Email Routing](https://developers.cloudflare.com/email-service/get-started/route-emails/)
+on your domain (it adds the MX/SPF/DKIM records). Then a Worker forwards each
+message to a `:cloudflare`
+[Action Mailbox](https://guides.rubyonrails.org/action_mailbox_basics.html)
+ingress that ships with the gem. Three steps:
+
+**1. Require the ingress** — opt-in, so it stays out of send-only apps:
+
+```ruby
+# config/initializers/cloudflare_email_service.rb
+require "cloudflare/email_service/action_mailbox"
+```
+
+**2. Select it** and set the shared signing secret — either
+`CLOUDFLARE_EMAIL_INGRESS_SECRET` or the `cloudflare.ingress_secret` credential:
+
+```ruby
+# config/environments/production.rb
+config.action_mailbox.ingress = :cloudflare
+```
+
+The route `POST /rails/action_mailbox/cloudflare/inbound_emails` is registered
+for you, and every request is verified by an HMAC-SHA256 signature with replay
+protection.
+
+**3. Deploy an Email Worker** that signs and forwards each message, and bind it
+to an Email Routing rule (or catch-all). One ships with the gem — set your app
+URL and give it the same `CLOUDFLARE_EMAIL_INGRESS_SECRET`, then deploy:
+
+- In this repo: [`templates/cloudflare_email_worker.js`](templates/cloudflare_email_worker.js)
+- From the installed gem: `Cloudflare::EmailService.worker_template_path`
+
+> [!NOTE]
+> The Worker sends `Content-Type: message/rfc822`; the ingress rejects anything
+> else with `415 Unsupported Media Type`.
 
 ---
 

@@ -51,8 +51,16 @@ module Cloudflare
       # Convenience: build a {Client} from the global config and send.
       # Accepts the same keyword arguments as {Message#initialize}.
       # @return [Response]
-      def send_email(**kwargs)
-        client.send_email(**kwargs)
+      def send_email(**)
+        client.send_email(**)
+      end
+
+      # Absolute path to the shipped Cloudflare Email Worker template that signs
+      # and forwards inbound mail to the Action Mailbox ingress. Set your app URL
+      # and secret in it, then deploy it.
+      # @return [String]
+      def worker_template_path
+        File.expand_path("../../templates/cloudflare_email_worker.js", __dir__)
       end
 
       # Cloudflare SMTP submission settings, in the shape both {SMTPClient} and
@@ -77,3 +85,7 @@ module Cloudflare
     end
   end
 end
+
+# Auto-wire the ActionMailer delivery method when running inside Rails. Guarded
+# so the core gem stays Rails-free everywhere else.
+require_relative "email_service/railtie" if defined?(Rails::Railtie)
