@@ -14,6 +14,12 @@ All notable changes to this project are documented here. The format is based on
   reuses Action Mailbox's standard ingress password. The core gem stays
   Rails-free; nothing loads unless the ingress is required.
 
+### Changed
+- The `:cloudflare` ActionMailer delivery method now registers automatically
+  via a Railtie inside Rails — no `require "cloudflare/email_service/rails"`
+  needed. Set `config.action_mailer.delivery_method = :cloudflare` and go;
+  credentials are read from `CLOUDFLARE_ACCOUNT_ID` / `CLOUDFLARE_API_TOKEN`.
+
 ### Fixed
 - `NetworkError` now also wraps TLS/SSL handshake failures
   (`OpenSSL::SSL::SSLError`) on both transports, matching the documented error

@@ -77,3 +77,7 @@ module Cloudflare
     end
   end
 end
+
+# Auto-wire the ActionMailer delivery method when running inside Rails. Guarded
+# so the core gem stays Rails-free everywhere else.
+require_relative "email_service/railtie" if defined?(Rails::Railtie)

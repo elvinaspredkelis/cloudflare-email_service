@@ -9,8 +9,10 @@ require "rails"
 require "active_record/railtie"
 require "active_storage/engine"
 require "action_controller/railtie"
+require "action_mailer/railtie"
 require "active_job/railtie"
 require "action_mailbox/engine"
+require "cloudflare/email_service/railtie"
 
 # Satisfies ActiveRecord's lazy database-config parse if the model is ever
 # referenced; no connection is opened in these tests.
@@ -41,6 +43,12 @@ CloudflareIngressTestApp.initialize!
 
 class ActionMailboxIngressTest < Minitest::Test
   Controller = ActionMailbox::Ingresses::Cloudflare::InboundEmailsController
+
+  def test_railtie_auto_registers_delivery_method
+    registered = ActionMailer::Base.delivery_methods
+    assert registered.key?(:cloudflare), "delivery methods: #{registered.keys.inspect}"
+    assert_equal Cloudflare::EmailService::Rails::DeliveryMethod, registered[:cloudflare]
+  end
 
   def test_controller_loads_and_subclasses_base_controller
     assert_operator Controller, :<, ActionMailbox::BaseController

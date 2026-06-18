@@ -4,22 +4,21 @@ require "cloudflare/email_service"
 
 module Cloudflare
   module EmailService
-    # Opt-in Rails / ActionMailer integration.
+    # Rails / ActionMailer integration. Registers a `:cloudflare` delivery
+    # method backed by the configured transport.
     #
-    # This file is NOT loaded by the core gem — require it explicitly (e.g. from
-    # an initializer) to register a `:cloudflare` ActionMailer delivery method
-    # backed by the configured transport:
+    # Inside a Rails app this loads automatically via {Railtie} — just set the
+    # delivery method and credentials; no require needed:
     #
-    #   # config/initializers/cloudflare_email_service.rb
-    #   require "cloudflare/email_service/rails"
+    #   # config/environments/production.rb
+    #   config.action_mailer.delivery_method = :cloudflare
     #
+    #   # credentials come from ENV (CLOUDFLARE_ACCOUNT_ID / CLOUDFLARE_API_TOKEN)
+    #   # or an initializer:
     #   Cloudflare::EmailService.configure do |c|
     #     c.account_id = Rails.application.credentials.dig(:cloudflare, :account_id)
     #     c.api_token  = Rails.application.credentials.dig(:cloudflare, :api_token)
     #   end
-    #
-    #   # config/environments/production.rb
-    #   config.action_mailer.delivery_method = :cloudflare
     module Rails
       # Converts an ActionMailer-built Mail::Message into the keyword arguments
       # accepted by {Message#initialize}.
@@ -124,13 +123,16 @@ module Cloudflare
 end
 
 # Register the delivery method when ActionMailer is present. Guarded so this
-# file is safe to require in a non-Rails process.
-if defined?(ActiveSupport)
-  ActiveSupport.on_load(:action_mailer) do
-    add_delivery_method :cloudflare, Cloudflare::EmailService::Rails::DeliveryMethod
-  end
-elsif defined?(ActionMailer::Base)
+# file is safe to require in a non-Rails process. ActionMailer::Base is checked
+# first so that when the Railtie requires this inside an `on_load(:action_mailer)`
+# hook (mailer already loaded), registration happens immediately rather than
+# scheduling a second, nested hook that may not run.
+if defined?(ActionMailer::Base)
   ActionMailer::Base.add_delivery_method(
     :cloudflare, Cloudflare::EmailService::Rails::DeliveryMethod
   )
+elsif defined?(ActiveSupport)
+  ActiveSupport.on_load(:action_mailer) do
+    add_delivery_method :cloudflare, Cloudflare::EmailService::Rails::DeliveryMethod
+  end
 end

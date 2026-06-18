@@ -109,14 +109,20 @@ end
 
 ## Rails
 
-The core gem is Rails-agnostic. Integration is opt-in — require it from an
-initializer to register a `:cloudflare` ActionMailer delivery method backed by
-whichever transport you configured:
+Adding the gem registers a `:cloudflare` delivery method automatically — just
+point ActionMailer at it. No require, no initializer:
+
+```ruby
+# config/environments/production.rb
+config.action_mailer.delivery_method = :cloudflare
+```
+
+Credentials come from `CLOUDFLARE_ACCOUNT_ID` / `CLOUDFLARE_API_TOKEN` in the
+environment. To set them in code (or pick the SMTP transport), add an
+initializer:
 
 ```ruby
 # config/initializers/cloudflare_email_service.rb
-require "cloudflare/email_service/rails"
-
 Cloudflare::EmailService.configure do |c|
   c.account_id = Rails.application.credentials.dig(:cloudflare, :account_id)
   c.api_token  = Rails.application.credentials.dig(:cloudflare, :api_token)
@@ -124,14 +130,8 @@ Cloudflare::EmailService.configure do |c|
 end
 ```
 
-```ruby
-# config/environments/production.rb
-config.action_mailer.delivery_method = :cloudflare
-```
-
 Your mailers then send through Cloudflare unchanged. Prefer ActionMailer's
-built-in `:smtp` delivery? Point it at Cloudflare with the settings helper — no
-adapter required:
+built-in `:smtp` delivery? Point it at Cloudflare with the settings helper:
 
 ```ruby
 config.action_mailer.delivery_method = :smtp

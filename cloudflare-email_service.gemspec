@@ -8,11 +8,10 @@ Gem::Specification.new do |spec|
   spec.authors = ["Elvinas Predkelis"]
   spec.email = ["elvinas@trip1.com"]
 
-  spec.summary = "Send email through the Cloudflare Email Service (REST or SMTP)."
-  spec.description = "A small Ruby client for sending transactional email via " \
-                     "the Cloudflare Email Service. The REST transport is " \
-                     "dependency-free; the optional SMTP transport uses the " \
-                     "`mail` gem only when selected."
+  spec.summary = "Send and receive email through the Cloudflare Email Service."
+  spec.description = "A small Ruby client for the Cloudflare Email Service with " \
+                     "zero runtime dependencies and optional Rails integration " \
+                     "(ActionMailer delivery and Action Mailbox inbound)."
   spec.homepage = "https://github.com/elvinaspredkelis/cloudflare-email_service"
   spec.license = "MIT"
   spec.required_ruby_version = ">= 3.1"
@@ -30,6 +29,9 @@ Gem::Specification.new do |spec|
   # giving the CI matrix multi-version coverage. Both are dev-only — the gem
   # itself adds no Rails runtime dependency.
   spec.add_development_dependency "actionmailbox", ">= 7.1"
+  # `actionmailer` lets the suite boot a real Rails app and confirm the Railtie
+  # auto-registers the :cloudflare delivery method. Dev-only.
+  spec.add_development_dependency "actionmailer", ">= 7.1"
   # `mail` is an OPTIONAL runtime dependency: it is required lazily only when
   # the SMTP transport is used. REST stays dependency-free. It is declared here
   # for development so the SMTP transport can be exercised by the test suite.
