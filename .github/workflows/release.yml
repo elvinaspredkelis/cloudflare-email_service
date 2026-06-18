@@ -24,6 +24,15 @@ jobs:
         with:
           ruby-version: "3.4"
           bundler-cache: true
+      - name: Check tag matches gem version
+        env:
+          TAG: ${{ github.event.release.tag_name }}
+        run: |
+          version=$(ruby -Ilib -e 'require "cloudflare/email_service/version"; print Cloudflare::EmailService::VERSION')
+          if [ "$TAG" != "v$version" ]; then
+            echo "::error::Release tag '$TAG' does not match gem version 'v$version' — bump version.rb or fix the tag."
+            exit 1
+          fi
       - uses: rubygems/release-gem@v1
       - name: Attach gem to the release
         env:
