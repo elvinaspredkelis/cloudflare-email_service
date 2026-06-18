@@ -24,11 +24,18 @@ Gem::Specification.new do |spec|
   spec.files = Dir.glob("lib/**/*.rb") + %w[README.md LICENSE.txt CHANGELOG.md]
   spec.require_paths = ["lib"]
 
+  # `actionmailbox` (with `railties`) boots a real Rails app in the test suite
+  # to verify the optional inbound ingress loads and wires in correctly. Pinned
+  # to ">= 7.1" so Ruby 3.1 resolves Rails 7.x and Ruby 3.2+ pulls Rails 8+,
+  # giving the CI matrix multi-version coverage. Both are dev-only — the gem
+  # itself adds no Rails runtime dependency.
+  spec.add_development_dependency "actionmailbox", ">= 7.1"
   # `mail` is an OPTIONAL runtime dependency: it is required lazily only when
   # the SMTP transport is used. REST stays dependency-free. It is declared here
   # for development so the SMTP transport can be exercised by the test suite.
   spec.add_development_dependency "mail", "~> 2.7"
   spec.add_development_dependency "minitest", "~> 5.0"
+  spec.add_development_dependency "railties", ">= 7.1"
   spec.add_development_dependency "rake", "~> 13.0"
   spec.add_development_dependency "rubocop", "~> 1.0"
   spec.add_development_dependency "webmock", "~> 3.0"
