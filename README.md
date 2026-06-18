@@ -142,6 +142,51 @@ config.action_mailer.smtp_settings   = Cloudflare::EmailService.smtp_settings(
 
 ---
 
+## Inbound email (Action Mailbox)
+
+Receive inbound mail through [Action Mailbox](https://guides.rubyonrails.org/action_mailbox_basics.html).
+A Cloudflare [Email Worker](https://developers.cloudflare.com/email-routing/email-workers/)
+forwards the raw message to a `:cloudflare` ingress that ships with this gem.
+Require it (opt-in, like the delivery adapter) and select it:
+
+```ruby
+# config/initializers/cloudflare_email_service.rb
+require "cloudflare/email_service/action_mailbox"
+```
+
+```ruby
+# config/environments/production.rb
+config.action_mailbox.ingress = :cloudflare
+```
+
+Authentication reuses Action Mailbox's standard ingress password — set it in
+credentials (`action_mailbox.ingress_password`) or via
+`RAILS_INBOUND_EMAIL_PASSWORD`. The route
+`POST /rails/action_mailbox/cloudflare/inbound_emails` is registered for you.
+
+Then point an Email Worker at it:
+
+```js
+export default {
+  async email(message, env) {
+    const auth = "Basic " + btoa("actionmailbox:" + env.RAILS_INBOUND_EMAIL_PASSWORD);
+    const raw = await new Response(message.raw).text();
+
+    await fetch("https://your-app.example.com/rails/action_mailbox/cloudflare/inbound_emails", {
+      method: "POST",
+      headers: { "Content-Type": "message/rfc822", "Authorization": auth },
+      body: raw,
+    });
+  },
+};
+```
+
+> [!NOTE]
+> The Worker must send `Content-Type: message/rfc822`; the ingress rejects
+> anything else with `415 Unsupported Media Type`.
+
+---
+
 ## Errors
 
 Non-2xx responses (and unsuccessful payloads) raise a typed error — every one a

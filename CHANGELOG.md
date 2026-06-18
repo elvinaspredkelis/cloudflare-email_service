@@ -4,6 +4,21 @@ All notable changes to this project are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/), and this project adheres to
 [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Added
+- Optional, opt-in Action Mailbox ingress
+  (`require "cloudflare/email_service/action_mailbox"`) registering a
+  `:cloudflare` ingress at `POST /rails/action_mailbox/cloudflare/inbound_emails`.
+  A Cloudflare Email Worker forwards the raw RFC822 message; authentication
+  reuses Action Mailbox's standard ingress password. The core gem stays
+  Rails-free; nothing loads unless the ingress is required.
+
+### Fixed
+- `NetworkError` now also wraps TLS/SSL handshake failures
+  (`OpenSSL::SSL::SSLError`) on both transports, matching the documented error
+  contract.
+
 ## [0.0.1] - 2026-06-17
 
 ### Added
