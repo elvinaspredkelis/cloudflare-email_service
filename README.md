@@ -170,13 +170,18 @@ Then point an Email Worker at it:
 export default {
   async email(message, env) {
     const auth = "Basic " + btoa("actionmailbox:" + env.RAILS_INBOUND_EMAIL_PASSWORD);
-    const raw = await new Response(message.raw).text();
+    // arrayBuffer (not text) preserves the raw bytes of non-UTF-8 messages.
+    const raw = await new Response(message.raw).arrayBuffer();
 
-    await fetch("https://your-app.example.com/rails/action_mailbox/cloudflare/inbound_emails", {
+    const response = await fetch("https://your-app.example.com/rails/action_mailbox/cloudflare/inbound_emails", {
       method: "POST",
       headers: { "Content-Type": "message/rfc822", "Authorization": auth },
       body: raw,
     });
+
+    // Throw on failure so Cloudflare bounces the message rather than silently
+    // accepting (and dropping) it.
+    if (!response.ok) throw new Error(`ingress error ${response.status}`);
   },
 };
 ```

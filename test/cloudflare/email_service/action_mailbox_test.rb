@@ -1,6 +1,13 @@
 # frozen_string_literal: true
 
 require "test_helper"
+
+# The Action Mailbox ingress targets Rails 8+, which requires Ruby 3.2.2+. On
+# Ruby 3.1 the modern Rails stack can't load (i18n uses Fiber storage), so this
+# real-app integration test runs on 3.2+; the gem core and its Rails delivery
+# logic stay covered on 3.1 by the other suites.
+return if RUBY_VERSION < "3.2"
+
 require "stringio"
 require "tmpdir"
 require "logger"
