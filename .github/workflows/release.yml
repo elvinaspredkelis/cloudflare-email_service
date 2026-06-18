@@ -1,0 +1,30 @@
+name: Release
+
+# Publishes the gem to RubyGems.org when a version tag (vX.Y.Z) is pushed.
+# Uses RubyGems trusted publishing (OIDC) — no API key is stored in the repo.
+on:
+  push:
+    tags:
+      - "v*"
+
+jobs:
+  push:
+    name: Push gem to RubyGems.org
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: write # rake release pushes the tag / creates the GitHub release
+      id-token: write # mandatory for trusted publishing
+
+    environment: release
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: "3.4"
+          bundler-cache: true
+      - uses: rubygems/release-gem@v1
