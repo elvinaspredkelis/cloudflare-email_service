@@ -152,33 +152,34 @@ config.action_mailer.smtp_settings   = Cloudflare::EmailService.smtp_settings(
 )
 ```
 
----
+### Inbound email (Action Mailbox)
 
-## Inbound email (Action Mailbox)
+Receive mail too: a Cloudflare [Email Worker](https://developers.cloudflare.com/email-routing/email-workers/)
+forwards each message to a `:cloudflare`
+[Action Mailbox](https://guides.rubyonrails.org/action_mailbox_basics.html)
+ingress that ships with the gem. Three steps:
 
-Receive inbound mail through [Action Mailbox](https://guides.rubyonrails.org/action_mailbox_basics.html).
-A Cloudflare [Email Worker](https://developers.cloudflare.com/email-routing/email-workers/)
-forwards the raw message to a `:cloudflare` ingress that ships with this gem.
-Require it (opt-in, like the delivery adapter) and select it:
+**1. Require the ingress** — opt-in, so it stays out of send-only apps:
 
 ```ruby
 # config/initializers/cloudflare_email_service.rb
 require "cloudflare/email_service/action_mailbox"
 ```
 
+**2. Select it** and set the shared signing secret — either
+`CLOUDFLARE_EMAIL_INGRESS_SECRET` or the `cloudflare.ingress_secret` credential:
+
 ```ruby
 # config/environments/production.rb
 config.action_mailbox.ingress = :cloudflare
 ```
 
-Requests are authenticated with an HMAC-SHA256 signature: the Worker signs each
-message with a shared secret, and the ingress verifies it and rejects stale
-timestamps (replay protection). Set the secret via `CLOUDFLARE_EMAIL_INGRESS_SECRET`
-or credentials (`cloudflare.ingress_secret`). The route
-`POST /rails/action_mailbox/cloudflare/inbound_emails` is registered for you.
+The route `POST /rails/action_mailbox/cloudflare/inbound_emails` is registered
+for you, and every request is verified by an HMAC-SHA256 signature with replay
+protection.
 
-Then point an Email Worker at it (set `CLOUDFLARE_EMAIL_INGRESS_SECRET` as a
-Worker secret to the same value):
+**3. Deploy an Email Worker** that signs and forwards the raw message (give it
+the same secret as `CLOUDFLARE_EMAIL_INGRESS_SECRET`):
 
 ```js
 export default {
