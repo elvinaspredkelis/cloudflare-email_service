@@ -17,6 +17,7 @@ require "cloudflare/email_service/railtie"
 # Satisfies ActiveRecord's lazy database-config parse if the model is ever
 # referenced; no connection is opened in these tests.
 ENV["DATABASE_URL"] ||= "sqlite3::memory:"
+ENV["CLOUDFLARE_EMAIL_INGRESS_SECRET"] = "ingress-test-secret"
 
 # Boot a minimal real Rails app with Action Mailbox so we can verify the gem
 # loads and wires itself in exactly as it would inside a host application —
@@ -43,6 +44,7 @@ CloudflareIngressTestApp.initialize!
 
 class ActionMailboxIngressTest < Minitest::Test
   Controller = ActionMailbox::Ingresses::Cloudflare::InboundEmailsController
+  SECRET = ENV.fetch("CLOUDFLARE_EMAIL_INGRESS_SECRET")
 
   def test_railtie_auto_registers_delivery_method
     registered = ActionMailer::Base.delivery_methods
@@ -68,10 +70,29 @@ class ActionMailboxIngressTest < Minitest::Test
     assert_equal ActionMailbox.ingress, name
   end
 
-  def test_password_auth_and_media_type_filters_are_wired
+  def test_signature_and_media_type_filters_are_wired
     filters = Controller._process_action_callbacks.map(&:filter)
-    assert_includes filters, :authenticate_by_password
+    assert_includes filters, :verify_signature
     assert_includes filters, :require_valid_rfc822_message
+  end
+
+  def test_verify_signature_accepts_a_valid_request
+    controller, statuses = controller_for("body")
+    assert_nil controller.send(:verify_signature)
+    assert_empty statuses
+  end
+
+  def test_verify_signature_rejects_a_bad_signature
+    controller, statuses = controller_for("body", signature: "deadbeef")
+    controller.send(:verify_signature)
+    assert_equal [:unauthorized], statuses
+  end
+
+  def test_verify_signature_rejects_a_stale_timestamp
+    stale = Time.now.to_i - 3600
+    controller, statuses = controller_for("body", timestamp: stale)
+    controller.send(:verify_signature)
+    assert_equal [:request_timeout], statuses
   end
 
   def test_create_ingests_raw_message_and_heads_no_content
@@ -111,12 +132,20 @@ class ActionMailboxIngressTest < Minitest::Test
 
   private
 
-  def controller_for(raw, media_type: "message/rfc822")
+  def controller_for(raw, media_type: "message/rfc822", timestamp: Time.now.to_i, signature: :valid)
+    body = raw.to_s
+    sig = signature == :valid ? sign(body, timestamp) : signature
+    headers = { "X-CF-Email-Timestamp" => timestamp.to_s, "X-CF-Email-Signature" => sig }
+    request = Struct.new(:media_type, :body, :headers).new(media_type, StringIO.new(body), headers)
+
     controller = Controller.new
-    request = Struct.new(:media_type, :body).new(media_type, raw && StringIO.new(raw))
     controller.define_singleton_method(:request) { request }
     statuses = []
     controller.define_singleton_method(:head) { |status| statuses << status }
     [controller, statuses]
+  end
+
+  def sign(body, timestamp)
+    OpenSSL::HMAC.hexdigest("SHA256", SECRET, "#{timestamp}.#{body.b}")
   end
 end

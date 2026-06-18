@@ -10,8 +10,10 @@ All notable changes to this project are documented here. The format is based on
 - Optional, opt-in Action Mailbox ingress
   (`require "cloudflare/email_service/action_mailbox"`) registering a
   `:cloudflare` ingress at `POST /rails/action_mailbox/cloudflare/inbound_emails`.
-  A Cloudflare Email Worker forwards the raw RFC822 message; authentication
-  reuses Action Mailbox's standard ingress password. The core gem stays
+  A Cloudflare Email Worker forwards the raw RFC822 message, signed with
+  HMAC-SHA256 over `"<timestamp>.<body>"`; the ingress verifies the signature
+  (`CLOUDFLARE_EMAIL_INGRESS_SECRET` or the `cloudflare.ingress_secret`
+  credential) and rejects stale timestamps to block replays. The core gem stays
   Rails-free; nothing loads unless the ingress is required.
 
 ### Changed

@@ -159,29 +159,43 @@ require "cloudflare/email_service/action_mailbox"
 config.action_mailbox.ingress = :cloudflare
 ```
 
-Authentication reuses Action Mailbox's standard ingress password — set it in
-credentials (`action_mailbox.ingress_password`) or via
-`RAILS_INBOUND_EMAIL_PASSWORD`. The route
+Requests are authenticated with an HMAC-SHA256 signature: the Worker signs each
+message with a shared secret, and the ingress verifies it and rejects stale
+timestamps (replay protection). Set the secret via `CLOUDFLARE_EMAIL_INGRESS_SECRET`
+or credentials (`cloudflare.ingress_secret`). The route
 `POST /rails/action_mailbox/cloudflare/inbound_emails` is registered for you.
 
-Then point an Email Worker at it:
+Then point an Email Worker at it (set `CLOUDFLARE_EMAIL_INGRESS_SECRET` as a
+Worker secret to the same value):
 
 ```js
 export default {
   async email(message, env) {
-    const auth = "Basic " + btoa("actionmailbox:" + env.RAILS_INBOUND_EMAIL_PASSWORD);
     // arrayBuffer (not text) preserves the raw bytes of non-UTF-8 messages.
-    const raw = await new Response(message.raw).arrayBuffer();
+    const raw = new Uint8Array(await new Response(message.raw).arrayBuffer());
+    const ts = Math.floor(Date.now() / 1000).toString();
+
+    const key = await crypto.subtle.importKey(
+      "raw", new TextEncoder().encode(env.CLOUDFLARE_EMAIL_INGRESS_SECRET),
+      { name: "HMAC", hash: "SHA-256" }, false, ["sign"],
+    );
+    const signed = new Uint8Array([...new TextEncoder().encode(ts + "."), ...raw]);
+    const digest = await crypto.subtle.sign("HMAC", key, signed);
+    const sig = [...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, "0")).join("");
 
     const response = await fetch("https://your-app.example.com/rails/action_mailbox/cloudflare/inbound_emails", {
       method: "POST",
-      headers: { "Content-Type": "message/rfc822", "Authorization": auth },
+      headers: {
+        "Content-Type": "message/rfc822",
+        "X-CF-Email-Timestamp": ts,
+        "X-CF-Email-Signature": sig,
+      },
       body: raw,
     });
 
-    // Throw on failure so Cloudflare bounces the message rather than silently
+    // Reject on failure so Cloudflare bounces the message rather than silently
     // accepting (and dropping) it.
-    if (!response.ok) throw new Error(`ingress error ${response.status}`);
+    if (!response.ok) message.setReject(`ingress error ${response.status}`);
   },
 };
 ```
