@@ -28,3 +28,11 @@ jobs:
           ruby-version: "3.4"
           bundler-cache: true
       - uses: rubygems/release-gem@v1
+
+      # rake release builds the gem into pkg/ and pushes it to RubyGems, but
+      # does not touch GitHub Releases. Create one for the tag and attach the
+      # built .gem so the exact published artifact is downloadable here too.
+      - name: Create GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "$GITHUB_REF_NAME" pkg/*.gem --title "$GITHUB_REF_NAME" --generate-notes
