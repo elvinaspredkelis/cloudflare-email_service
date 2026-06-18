@@ -6,6 +6,8 @@ All notable changes to this project are documented here. The format is based on
 
 ## [Unreleased]
 
+## [0.1.0] - 2026-06-18
+
 ### Added
 - Optional, opt-in Action Mailbox ingress
   (`require "cloudflare/email_service/action_mailbox"`) registering a
