@@ -6,6 +6,11 @@ All notable changes to this project are documented here. The format is based on
 
 ## [Unreleased]
 
+### Changed
+- The bundled Email Worker template reads the ingress URL from a
+  `CLOUDFLARE_EMAIL_INGRESS_URL` Worker var instead of a hardcoded URL, so it
+  deploys unchanged across apps/environments.
+
 ## [0.1.0] - 2026-06-18
 
 ### Added

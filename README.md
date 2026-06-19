@@ -211,8 +211,9 @@ for you, and every request is verified by an HMAC-SHA256 signature with replay
 protection.
 
 **3. Deploy an Email Worker** that signs and forwards each message, and bind it
-to an Email Routing rule (or catch-all). One ships with the gem — set your app
-URL and give it the same `CLOUDFLARE_EMAIL_INGRESS_SECRET`, then deploy:
+to an Email Routing rule (or catch-all). One ships with the gem — deploy it
+unchanged and set two Worker vars: `CLOUDFLARE_EMAIL_INGRESS_URL` (the route
+above) and `CLOUDFLARE_EMAIL_INGRESS_SECRET` (matching the app):
 
 - In this repo: [`templates/cloudflare_email_worker.js`](templates/cloudflare_email_worker.js)
 - From the installed gem: `Cloudflare::EmailService.worker_template_path`
