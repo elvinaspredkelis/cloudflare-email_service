@@ -7,7 +7,7 @@ Two interchangeable transports: **REST** (default — zero dependencies, just
 `net/http`) and **SMTP** (optional, via the [`mail`](https://rubygems.org/gems/mail)
 gem). Same `send_email` call either way; pick the transport in configuration.
 
-Developed at [Primevise](https://primevise.com).
+Battle-tested at [Rinkta](https://rinkta.com). Developed at [Primevise](https://primevise.com).
 
 <a href="https://github.com/elvinaspredkelis/cloudflare-email_service/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/elvinaspredkelis/cloudflare-email_service/actions/workflows/ci.yml/badge.svg"></a>
 <a href="https://rubygems.org/gems/cloudflare-email_service"><img alt="Gem Version" src="https://img.shields.io/gem/v/cloudflare-email_service?color=10b981&include_prereleases&logo=ruby&logoColor=f43f5e"></a>
