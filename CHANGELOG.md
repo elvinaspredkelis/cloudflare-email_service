@@ -6,10 +6,24 @@ All notable changes to this project are documented here. The format is based on
 
 ## [Unreleased]
 
+### Added
+- The bundled Email Worker template now answers `GET /` with a
+  `{ ok, configured }` health check, so the worker URL no longer errors and you
+  can confirm its vars are set.
+
 ### Changed
 - The bundled Email Worker template reads the ingress URL from a
   `CLOUDFLARE_EMAIL_INGRESS_URL` Worker var instead of a hardcoded URL, so it
   deploys unchanged across apps/environments.
+- The inbound ingress secret is now `config.ingress_secret` on the gem
+  configuration (defaulting from `CLOUDFLARE_EMAIL_INGRESS_SECRET`), set in the
+  same `configure` block as the other credentials — instead of an ad-hoc env /
+  Rails-credentials lookup in the controller.
+
+### Fixed
+- Read the inbound request body via `request.raw_post`, which is consistent
+  across Puma, Falcon, and Unicorn and nil-safe. The previous `request.body.read`
+  raised on servers (e.g. Falcon) that hand back no body object.
 
 ## [0.1.0] - 2026-06-18
 

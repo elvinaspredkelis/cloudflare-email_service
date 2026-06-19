@@ -29,6 +29,10 @@ module Cloudflare
       attr_accessor :open_timeout
       # @return [Integer] read timeout in seconds.
       attr_accessor :timeout
+      # @return [String, nil] HMAC secret used to verify inbound Action Mailbox
+      #   requests (CLOUDFLARE_EMAIL_INGRESS_SECRET). Must match the value the
+      #   Cloudflare Email Worker signs with.
+      attr_accessor :ingress_secret
 
       def initialize
         @transport = ENV.fetch("CLOUDFLARE_EMAIL_TRANSPORT", "rest").to_sym
@@ -39,6 +43,7 @@ module Cloudflare
         @smtp_port = Integer(ENV.fetch("CLOUDFLARE_SMTP_PORT", DEFAULT_SMTP_PORT))
         @open_timeout = DEFAULT_TIMEOUT
         @timeout = DEFAULT_TIMEOUT
+        @ingress_secret = ENV.fetch("CLOUDFLARE_EMAIL_INGRESS_SECRET", nil)
       end
     end
   end

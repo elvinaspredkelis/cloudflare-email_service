@@ -158,8 +158,8 @@ config.action_mailer.delivery_method = :cloudflare
 ```
 
 Credentials come from `CLOUDFLARE_ACCOUNT_ID` / `CLOUDFLARE_API_TOKEN` in the
-environment. To set them in code (or pick the SMTP transport), add an
-initializer:
+environment. To set them in code, choose the SMTP transport, or receive inbound
+mail, use a single initializer:
 
 ```ruby
 # config/initializers/cloudflare_email_service.rb
@@ -167,6 +167,15 @@ Cloudflare::EmailService.configure do |c|
   c.account_id = Rails.application.credentials.dig(:cloudflare, :account_id)
   c.api_token  = Rails.application.credentials.dig(:cloudflare, :api_token)
   # c.transport = :smtp   # optional; defaults to :rest
+
+  # Inbound (Action Mailbox) only — must match the Worker's signing secret:
+  c.ingress_secret = Rails.application.credentials.dig(:cloudflare, :ingress_secret)
+end
+
+# Inbound (Action Mailbox) only — load the :cloudflare ingress. In `to_prepare`
+# so its controller superclass is autoloadable regardless of boot order.
+Rails.application.config.to_prepare do
+  require "cloudflare/email_service/action_mailbox"
 end
 ```
 
@@ -189,17 +198,10 @@ so first enable
 on your domain (it adds the MX/SPF/DKIM records). Then a Worker forwards each
 message to a `:cloudflare`
 [Action Mailbox](https://guides.rubyonrails.org/action_mailbox_basics.html)
-ingress that ships with the gem. Three steps:
+ingress that ships with the gem. The initializer above loads the ingress and
+sets the signing secret; then:
 
-**1. Require the ingress** — opt-in, so it stays out of send-only apps:
-
-```ruby
-# config/initializers/cloudflare_email_service.rb
-require "cloudflare/email_service/action_mailbox"
-```
-
-**2. Select it** and set the shared signing secret — either
-`CLOUDFLARE_EMAIL_INGRESS_SECRET` or the `cloudflare.ingress_secret` credential:
+**1. Select the ingress:**
 
 ```ruby
 # config/environments/production.rb
@@ -208,15 +210,19 @@ config.action_mailbox.ingress = :cloudflare
 
 The route `POST /rails/action_mailbox/cloudflare/inbound_emails` is registered
 for you, and every request is verified by an HMAC-SHA256 signature with replay
-protection.
+protection. The ingress reads the body via `request.raw_post`, so it works under
+any Rack server — Puma, Falcon, or Unicorn.
 
-**3. Deploy an Email Worker** that signs and forwards each message, and bind it
+**2. Deploy an Email Worker** that signs and forwards each message, and bind it
 to an Email Routing rule (or catch-all). One ships with the gem — deploy it
 unchanged and set two Worker vars: `CLOUDFLARE_EMAIL_INGRESS_URL` (the route
 above) and `CLOUDFLARE_EMAIL_INGRESS_SECRET` (matching the app):
 
 - In this repo: [`templates/cloudflare_email_worker.js`](templates/cloudflare_email_worker.js)
 - From the installed gem: `Cloudflare::EmailService.worker_template_path`
+
+Visiting the worker's URL returns a `{ ok, configured }` health check — a quick
+way to confirm it's deployed and both vars are set.
 
 > [!NOTE]
 > The Worker sends `Content-Type: message/rfc822`; the ingress rejects anything

@@ -1,17 +1,25 @@
 // Cloudflare Email Worker for cloudflare-email_service inbound (Action Mailbox).
 //
-// Forwards each received message to your Rails app's :cloudflare ingress, signed
-// with HMAC-SHA256 over "<timestamp>.<body>" so the ingress can verify it and
-// reject replays.
+// - email(): forwards each received message to your Rails app's :cloudflare
+//   ingress, signed with HMAC-SHA256 over "<timestamp>.<body>".
+// - fetch(): a GET health check. Email Workers have no HTTP API, so visiting the
+//   worker URL would otherwise error; this returns whether the vars are set.
 //
 // Set two Worker secrets/vars, then bind the Worker to an Email Routing rule and
 // deploy (e.g. wrangler):
 //   - CLOUDFLARE_EMAIL_INGRESS_URL    full URL of the ingress, e.g.
 //       https://your-app.example.com/rails/action_mailbox/cloudflare/inbound_emails
 //   - CLOUDFLARE_EMAIL_INGRESS_SECRET same value as the app's
-//       CLOUDFLARE_EMAIL_INGRESS_SECRET (or cloudflare.ingress_secret)
+//       config.ingress_secret (CLOUDFLARE_EMAIL_INGRESS_SECRET)
 
 export default {
+  async fetch(_request, env) {
+    const configured = Boolean(
+      env.CLOUDFLARE_EMAIL_INGRESS_URL && env.CLOUDFLARE_EMAIL_INGRESS_SECRET,
+    );
+    return Response.json({ ok: true, configured });
+  },
+
   async email(message, env) {
     const { CLOUDFLARE_EMAIL_INGRESS_URL: url, CLOUDFLARE_EMAIL_INGRESS_SECRET: secret } = env;
     if (!url || !secret) {

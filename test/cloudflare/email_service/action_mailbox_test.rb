@@ -1,7 +1,6 @@
 # frozen_string_literal: true
 
 require "test_helper"
-require "stringio"
 require "tmpdir"
 require "logger"
 
@@ -45,6 +44,10 @@ CloudflareIngressTestApp.initialize!
 class ActionMailboxIngressTest < Minitest::Test
   Controller = ActionMailbox::Ingresses::Cloudflare::InboundEmailsController
   SECRET = ENV.fetch("CLOUDFLARE_EMAIL_INGRESS_SECRET")
+
+  def setup
+    Cloudflare::EmailService.configuration.ingress_secret = SECRET
+  end
 
   def test_railtie_auto_registers_delivery_method
     registered = ActionMailer::Base.delivery_methods
@@ -124,6 +127,14 @@ class ActionMailboxIngressTest < Minitest::Test
     assert_equal [:unprocessable_entity], statuses
   end
 
+  def test_create_handles_missing_body_without_crashing
+    # Some servers (e.g. Falcon) hand back no body object; raw_post must cope
+    # rather than raise NoMethodError.
+    controller, statuses = controller_for(nil)
+    controller.create
+    assert_equal [:unprocessable_entity], statuses
+  end
+
   def test_require_valid_rfc822_message_rejects_other_media_types
     controller, statuses = controller_for("x", media_type: "text/plain")
     controller.send(:require_valid_rfc822_message)
@@ -136,7 +147,8 @@ class ActionMailboxIngressTest < Minitest::Test
     body = raw.to_s
     sig = signature == :valid ? sign(body, timestamp) : signature
     headers = { "X-CF-Email-Timestamp" => timestamp.to_s, "X-CF-Email-Signature" => sig }
-    request = Struct.new(:media_type, :body, :headers).new(media_type, StringIO.new(body), headers)
+    # `raw` may be nil to simulate a server handing back no body — raw_post copes.
+    request = Struct.new(:media_type, :raw_post, :headers).new(media_type, raw, headers)
 
     controller = Controller.new
     controller.define_singleton_method(:request) { request }

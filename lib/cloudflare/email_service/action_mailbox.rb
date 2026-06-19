@@ -4,9 +4,11 @@ require "cloudflare/email_service"
 require "cloudflare/email_service/inbound"
 
 # Opt-in Action Mailbox ingress: forwards inbound mail from a Cloudflare Email
-# Worker into Action Mailbox. Not loaded by the core gem — require it explicitly
-# and select it with `config.action_mailbox.ingress = :cloudflare`. The route is
-# registered automatically. See the README for setup and the Worker snippet.
+# Worker into Action Mailbox. Not loaded by the core gem — require it from an
+# initializer (inside `Rails.application.config.to_prepare`, so the controller's
+# superclass is autoloadable) and select it with
+# `config.action_mailbox.ingress = :cloudflare`. The route is registered
+# automatically. See the README for setup and the Worker snippet.
 if defined?(ActionMailbox)
   module ActionMailbox
     module Ingresses
@@ -49,18 +51,17 @@ if defined?(ActionMailbox)
           end
 
           # Read once, as binary, so the bytes match exactly what the Worker
-          # signed and what Action Mailbox stores.
+          # signed and what Action Mailbox stores. `raw_post` is ActionDispatch's
+          # body reader — consistent across Puma, Falcon, and Unicorn, and nil-safe
+          # (`request.body` can be nil/non-rewindable on some servers).
           def raw_body
-            @raw_body ||= begin
-              request.body.rewind if request.body.respond_to?(:rewind)
-              request.body.read.to_s.b
-            end
+            @raw_body ||= request.raw_post.to_s.b
           end
 
-          # Shared HMAC secret, from the environment or Rails credentials.
+          # Shared HMAC secret, from the gem configuration
+          # (`config.ingress_secret` / CLOUDFLARE_EMAIL_INGRESS_SECRET).
           def signing_secret
-            ENV["CLOUDFLARE_EMAIL_INGRESS_SECRET"] ||
-              ::Rails.application.credentials.dig(:cloudflare, :ingress_secret).to_s
+            ::Cloudflare::EmailService.configuration.ingress_secret.to_s
           end
         end
       end
