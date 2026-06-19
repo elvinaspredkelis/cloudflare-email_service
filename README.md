@@ -1,11 +1,13 @@
 # Cloudflare Email Service
 
-A small Ruby client for sending transactional email through the
-[Cloudflare Email Service](https://developers.cloudflare.com/email-service/).
+A small Ruby client for the [Cloudflare Email Service](https://developers.cloudflare.com/email-service/):
+send transactional email from any Ruby app, and — in Rails — receive it through
+Action Mailbox.
 
-Two interchangeable transports: **REST** (default — zero dependencies, just
-`net/http`) and **SMTP** (optional, via the [`mail`](https://rubygems.org/gems/mail)
-gem). Same `send_email` call either way; pick the transport in configuration.
+Sending uses one of two interchangeable transports: **REST** (the default — zero
+dependencies, just `net/http`) or **SMTP** (optional, via the
+[`mail`](https://rubygems.org/gems/mail) gem). The same `send_email` call works
+for both.
 
 Battle-tested at [Rinkta](https://rinkta.com). Developed at [Primevise](https://primevise.com).
 
@@ -17,19 +19,19 @@ Battle-tested at [Rinkta](https://rinkta.com). Developed at [Primevise](https://
 
 ## Installation
 
-```
+```sh
 bundle add cloudflare-email_service
 ```
 
 Requires Ruby 3.2+. For the SMTP transport, also add the `mail` gem:
 
-```
+```sh
 bundle add mail
 ```
 
 ---
 
-## Usage
+## Quick start
 
 Configure once with your Cloudflare API token (plus an account id for REST),
 then send:
@@ -54,28 +56,15 @@ response.success?   # => true
 response.delivered  # => ["recipient@example.com"]
 ```
 
-`Response` also exposes `#queued`, `#permanent_bounces`, `#errors`, `#status`,
-and the raw parsed `#body`.
-
-> [!TIP]
-> `from`, `to`, `cc`, `bcc`, and `reply_to` accept a string
-> (`"a@x.com"` or `"Display Name <a@x.com>"`), a hash (`{ email:, name: }`), or —
-> for `to` / `cc` / `bcc` — an array of either. Add files with
-> `attachments: [{ content: Base64.strict_encode64(bytes), filename:, type: }]`
-> and arbitrary headers with `headers: { "In-Reply-To" => "<id>" }`.
-
-> [!CAUTION]
-> The total message size (body + attachments) must not exceed **5 MiB**.
-
-Skip the global config and pass credentials per client when you send from more
-than one account:
+Need to send from more than one account? Skip the global config and build a
+client directly:
 
 ```ruby
 Cloudflare::EmailService::Client.new(account_id: "...", api_token: "...")  # REST
 Cloudflare::EmailService::SMTPClient.new(api_token: "...")                 # SMTP
 ```
 
-#### Credentials
+### Credentials
 
 Set credentials in `configure` (above) or through the environment:
 
@@ -89,11 +78,50 @@ no account id.
 
 ---
 
+## Messages
+
+`send_email` accepts these keywords (`from`, `to`, `subject`, and one of
+`html` / `text` are required):
+
+| Keyword | Description |
+| ------- | ----------- |
+| `from` | Sender. A string or `{ email:, name: }` hash. |
+| `to` / `cc` / `bcc` | Recipients. A string, a hash, or an array of either. |
+| `reply_to` | Reply-To address (string or hash). |
+| `subject` | Subject line. |
+| `html` / `text` | Body. Provide either or both. |
+| `attachments` | Array of `{ content:, filename:, type:, disposition: }`. |
+| `headers` | Hash of custom headers, e.g. `{ "In-Reply-To" => "<id>" }`. |
+
+In an address hash, `:address` aliases `:email`. Attachment `content` is Base64:
+
+```ruby
+Cloudflare::EmailService.send_email(
+  from: "reports@yourdomain.com",
+  to: "recipient@example.com",
+  subject: "Your report",
+  text: "See attached.",
+  attachments: [
+    {
+      content: Base64.strict_encode64(File.read("report.pdf")),
+      filename: "report.pdf",
+      type: "application/pdf",
+      disposition: "attachment", # optional
+    },
+  ],
+)
+```
+
+> [!CAUTION]
+> The total message size (body + attachments) must not exceed **5 MiB**.
+
+---
+
 ## Transports
 
 Both transports accept the same `send_email` call and return the same
-`Response` — they differ only in how the message reaches Cloudflare. Choose one
-with `config.transport`.
+[`Response`](#response) — they differ only in how the message reaches Cloudflare.
+Choose one with `config.transport`.
 
 **REST** (`:rest`, the default) posts JSON to the Cloudflare API over HTTPS
 using only `net/http` from the standard library — no MIME assembly, no gems.
@@ -195,6 +223,22 @@ URL and give it the same `CLOUDFLARE_EMAIL_INGRESS_SECRET`, then deploy:
 
 ---
 
+## Response
+
+`send_email` returns a `Cloudflare::EmailService::Response`:
+
+| Method               | Returns                                       |
+| -------------------- | --------------------------------------------- |
+| `#success?`          | `true` when Cloudflare accepted the request   |
+| `#delivered`         | array of accepted recipient addresses         |
+| `#queued`            | array of queued recipient addresses           |
+| `#permanent_bounces` | array of permanently bounced addresses        |
+| `#errors`            | array of Cloudflare error objects             |
+| `#status`            | HTTP status code                              |
+| `#body`              | the raw parsed JSON body                      |
+
+---
+
 ## Errors
 
 Non-2xx responses (and unsuccessful payloads) raise a typed error — every one a
@@ -210,16 +254,35 @@ subclass of `Cloudflare::EmailService::Error`:
 | `ServerError`         | HTTP 5xx                                    |
 | `NetworkError`        | connection, timeout, and TLS failures      |
 
-API errors also carry `#status` and `#errors` for context.
+The API errors (`AuthenticationError`, `RequestError`, `RateLimitError`,
+`ServerError`) inherit from `APIError` and carry `#status` and `#errors`:
+
+```ruby
+begin
+  Cloudflare::EmailService.send_email(from: "a@x.com", to: "b@y.com", subject: "Hi", text: "Hello")
+rescue Cloudflare::EmailService::APIError => e
+  e.status   # => 403
+  e.errors   # => [{ "code" => 10000, "message" => "Authentication error" }]
+  e.message  # => "[10000] Authentication error"
+end
+```
 
 ---
 
 ## Development
 
 ```sh
+bundle install            # install dependencies
 bundle exec rake test     # run the Minitest suite
 bundle exec rubocop       # lint
 ```
+
+---
+
+## Contributing
+
+Bug reports and pull requests welcome on
+[GitHub](https://github.com/elvinaspredkelis/cloudflare-email_service).
 
 ---
 
