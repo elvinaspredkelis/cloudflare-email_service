@@ -6,6 +6,8 @@ All notable changes to this project are documented here. The format is based on
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-06-19
+
 ### Added
 - The bundled Email Worker template now answers `GET /` with a
   `{ ok, configured }` health check, so the worker URL no longer errors and you
