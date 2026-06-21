@@ -19,11 +19,17 @@ module Cloudflare
       attr_reader :errors
       # @return [Response, nil] the wrapped API response.
       attr_reader :response
+      # @return [Integer, nil] seconds to wait before retrying, parsed from the
+      #   `Retry-After` response header whenever the API sends one (typically a
+      #   429, sometimes a 503). nil when the header is absent or not an integer
+      #   number of seconds.
+      attr_reader :retry_after
 
-      def initialize(message = nil, status: nil, errors: nil, response: nil)
+      def initialize(message = nil, status: nil, errors: nil, response: nil, retry_after: nil)
         @status = status
         @errors = errors || []
         @response = response
+        @retry_after = retry_after
         super(message)
       end
     end

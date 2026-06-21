@@ -77,7 +77,15 @@ module Cloudflare
         response = Response.new(status: status, body: parse(http_response.body))
         return response if status.between?(200, 299) && response.success?
 
-        raise_error(status, response)
+        raise_error(status, response, retry_after: retry_after_from(http_response))
+      end
+
+      # The `Retry-After` header as a non-negative Integer of seconds, or nil
+      # when absent or given as an HTTP-date rather than a delay.
+      def retry_after_from(http_response)
+        raw = http_response["retry-after"]
+        seconds = Integer(raw.to_s.strip, exception: false)
+        seconds if seconds&.>=(0)
       end
 
       def parse(raw)
@@ -88,12 +96,13 @@ module Cloudflare
         { "success" => false, "errors" => [{ "message" => "non-JSON response body" }] }
       end
 
-      def raise_error(status, response)
+      def raise_error(status, response, retry_after: nil)
         raise error_class_for(status).new(
           summarize(response.errors),
           status: status,
           errors: response.errors,
           response: response,
+          retry_after: retry_after,
         )
       end
 

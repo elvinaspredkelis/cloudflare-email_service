@@ -89,7 +89,28 @@ class ClientTest < CFTestCase
 
   def test_send_email_raises_rate_limit_error_on_429
     stub_request(:post, URL).to_return(status: 429, body: { success: false, errors: [] }.to_json)
-    assert_raises(ES::RateLimitError) { send_basic }
+    error = assert_raises(ES::RateLimitError) { send_basic }
+    assert_nil error.retry_after
+  end
+
+  def test_rate_limit_error_exposes_retry_after_header
+    stub_request(:post, URL).to_return(
+      status: 429,
+      body: { success: false, errors: [] }.to_json,
+      headers: { "Retry-After" => "30" },
+    )
+    error = assert_raises(ES::RateLimitError) { send_basic }
+    assert_equal 30, error.retry_after
+  end
+
+  def test_retry_after_ignores_http_date_form
+    stub_request(:post, URL).to_return(
+      status: 429,
+      body: { success: false, errors: [] }.to_json,
+      headers: { "Retry-After" => "Wed, 21 Oct 2026 07:28:00 GMT" },
+    )
+    error = assert_raises(ES::RateLimitError) { send_basic }
+    assert_nil error.retry_after
   end
 
   def test_send_email_raises_server_error_on_500

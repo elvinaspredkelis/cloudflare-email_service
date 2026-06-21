@@ -6,6 +6,12 @@ All notable changes to this project are documented here. The format is based on
 
 ## [Unreleased]
 
+### Added
+- `RateLimitError#retry_after` exposes the `Retry-After` header from a `429`
+  response as an integer number of seconds (nil when absent or sent as an
+  HTTP-date), so callers can honor Cloudflare's backoff. The README now
+  documents the recommended `deliver_later` + `retry_on` retry pattern.
+
 ## [0.2.0] - 2026-06-19
 
 ### Added
