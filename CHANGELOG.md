@@ -6,6 +6,8 @@ All notable changes to this project are documented here. The format is based on
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-06-21
+
 ### Changed
 - The bundled Email Worker no longer permanently rejects inbound mail on a
   transient ingress failure. A `4xx` from the app is still rejected (permanent
