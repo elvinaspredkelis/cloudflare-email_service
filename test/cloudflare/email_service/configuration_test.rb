@@ -57,6 +57,24 @@ class ConfigurationTest < CFTestCase
     assert_raises(ES::ConfigurationError) { ES.client }
   end
 
+  def test_default_instrumenter_is_not_memoized
+    config = ES::Configuration.new
+    config.instrumenter # resolve the default once
+
+    # The default must never be cached, or a send that happens before
+    # ActiveSupport loads would latch the no-op and silently drop later events.
+    assert_nil config.instance_variable_get(:@instrumenter)
+    assert_respond_to config.instrumenter, :instrument
+  end
+
+  def test_explicit_instrumenter_overrides_default
+    custom = Object.new
+    config = ES::Configuration.new
+    config.instrumenter = custom
+
+    assert_same custom, config.instrumenter
+  end
+
   def test_worker_template_path_points_to_shipped_file
     path = ES.worker_template_path
     assert_path_exists path

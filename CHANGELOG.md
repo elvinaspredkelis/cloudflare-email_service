@@ -7,6 +7,11 @@ All notable changes to this project are documented here. The format is based on
 ## [Unreleased]
 
 ### Added
+- Each send now publishes a `deliver.cloudflare_email_service` instrumentation
+  event — through `ActiveSupport::Notifications` when it is loaded, otherwise a
+  no-op. The payload carries the transport, recipient counts, and response
+  status (never message content); a failed send records the exception. Set
+  `config.instrumenter` to plug in a custom one.
 - `RateLimitError#retry_after` exposes the `Retry-After` header from a `429`
   response as an integer number of seconds (nil when absent or sent as an
   HTTP-date), so callers can honor Cloudflare's backoff. The README now

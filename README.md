@@ -316,6 +316,39 @@ end
 
 ---
 
+## Instrumentation
+
+Every send publishes a `deliver.cloudflare_email_service` event. When
+`ActiveSupport::Notifications` is loaded (e.g. in Rails) it's used
+automatically — subscribe to log, time, or meter your sends:
+
+```ruby
+ActiveSupport::Notifications.subscribe("deliver.cloudflare_email_service") do |*args|
+  event = ActiveSupport::Notifications::Event.new(*args)
+  Rails.logger.info(
+    "cloudflare email: transport=#{event.payload[:transport]} " \
+    "to=#{event.payload[:to]} status=#{event.payload[:status]} " \
+    "duration=#{event.duration.round}ms",
+  )
+end
+```
+
+The payload carries `:transport` (`:rest` / `:smtp`), recipient counts (`:to`,
+`:cc`, `:bcc`), and `:status` on success — never addresses, subject, or body. A
+failed send raises through, so the event records the exception (and the send
+still raises to your caller).
+
+Outside Rails, plug in any object with an `instrument(name, payload) { ... }`
+method (the same shape as `ActiveSupport::Notifications`):
+
+```ruby
+Cloudflare::EmailService.configure do |c|
+  c.instrumenter = MyInstrumenter
+end
+```
+
+---
+
 ## Development
 
 ```sh

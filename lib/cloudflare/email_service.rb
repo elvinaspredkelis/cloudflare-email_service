@@ -5,6 +5,7 @@ require_relative "email_service/errors"
 require_relative "email_service/configuration"
 require_relative "email_service/message"
 require_relative "email_service/response"
+require_relative "email_service/instrumentation"
 require_relative "email_service/client"
 require_relative "email_service/smtp_client"
 
