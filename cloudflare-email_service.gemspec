@@ -9,9 +9,9 @@ Gem::Specification.new do |spec|
   spec.email = ["elvinas@primevise.com"]
 
   spec.summary = "Send and receive email through the Cloudflare Email Service."
-  spec.description = "A small Ruby client for the Cloudflare Email Service with " \
-                     "zero runtime dependencies and optional Rails integration " \
-                     "(ActionMailer delivery and Action Mailbox inbound)."
+  spec.description = "Send and receive email with the Cloudflare Email Service in Ruby. " \
+                     "Zero runtime dependencies, with optional ActionMailer and " \
+                     "Action Mailbox adapters for Rails."
   spec.homepage = "https://github.com/elvinaspredkelis/cloudflare-email_service"
   spec.license = "MIT"
   spec.required_ruby_version = ">= 3.2"
