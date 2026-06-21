@@ -14,6 +14,11 @@ All notable changes to this project are documented here. The format is based on
   legitimate mail during a deploy or brief outage.
 
 ### Added
+- A Rails install generator: `bin/rails g cloudflare_email_service:install`
+  writes `config/initializers/cloudflare_email_service.rb` (inbound lines
+  commented out) and prints the remaining setup steps. Generator code lives
+  under `lib/generators` and loads only in a Rails generator context, so the
+  core gem stays Rails-free.
 - Each send now publishes a `deliver.cloudflare_email_service` instrumentation
   event — through `ActiveSupport::Notifications` when it is loaded, otherwise a
   no-op. The payload carries the transport, recipient counts, and response

@@ -159,7 +159,14 @@ config.action_mailer.delivery_method = :cloudflare
 
 Credentials come from `CLOUDFLARE_ACCOUNT_ID` / `CLOUDFLARE_API_TOKEN` in the
 environment. To set them in code, choose the SMTP transport, or receive inbound
-mail, use a single initializer:
+mail, use a single initializer. Generate it with
+
+```sh
+bin/rails g cloudflare_email_service:install
+```
+
+which writes the file below (inbound lines commented out) and prints the
+remaining steps — or create it by hand:
 
 ```ruby
 # config/initializers/cloudflare_email_service.rb
