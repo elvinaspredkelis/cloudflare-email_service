@@ -48,8 +48,19 @@ export default {
       body: raw,
     });
 
-    // Reject on failure so Cloudflare bounces the message rather than silently
-    // accepting (and dropping) it.
-    if (!response.ok) message.setReject(`ingress error ${response.status}`);
+    if (response.ok) return;
+
+    // 4xx: the app refused this message and a retry won't change the outcome
+    // (bad signature, wrong media type, unprocessable). Reject permanently so
+    // the sender gets a bounce instead of the message being silently dropped.
+    if (response.status >= 400 && response.status < 500) {
+      return message.setReject(`ingress rejected message (${response.status})`);
+    }
+
+    // 5xx (or any other non-2xx): a transient app problem — a deploy, a 502/503,
+    // a brief 500. Throw instead of setReject, exactly as a failed fetch() above
+    // already would, so the message is NOT permanently bounced and the sending
+    // server retries delivery once the app recovers.
+    throw new Error(`ingress temporarily unavailable (${response.status})`);
   },
 };

@@ -224,6 +224,14 @@ above) and `CLOUDFLARE_EMAIL_INGRESS_SECRET` (matching the app):
 Visiting the worker's URL returns a `{ ok, configured }` health check — a quick
 way to confirm it's deployed and both vars are set.
 
+The Worker distinguishes permanent from transient ingress failures. A `4xx`
+(bad signature, wrong media type, unprocessable) is rejected permanently so the
+sender is bounced — a retry would never succeed. A `5xx` or network failure
+(a deploy, a brief outage) instead lets the message fail temporarily, so the
+sending server retries delivery once the app recovers, rather than bouncing
+legitimate mail. A long outage can still outlast the sender's retry window, so
+prefer zero-downtime deploys for the ingress.
+
 > [!NOTE]
 > The Worker sends `Content-Type: message/rfc822`; the ingress rejects anything
 > else with `415 Unsupported Media Type`.

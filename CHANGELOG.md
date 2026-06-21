@@ -6,6 +6,13 @@ All notable changes to this project are documented here. The format is based on
 
 ## [Unreleased]
 
+### Changed
+- The bundled Email Worker no longer permanently rejects inbound mail on a
+  transient ingress failure. A `4xx` from the app is still rejected (permanent
+  bounce — a retry won't help), but a `5xx` or network failure now throws, so
+  the sending server retries delivery once the app recovers instead of bouncing
+  legitimate mail during a deploy or brief outage.
+
 ### Added
 - Each send now publishes a `deliver.cloudflare_email_service` instrumentation
   event — through `ActiveSupport::Notifications` when it is loaded, otherwise a
