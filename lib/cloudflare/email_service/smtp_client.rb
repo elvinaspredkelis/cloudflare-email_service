@@ -13,6 +13,8 @@ module Cloudflare
     #   client.send_email(from: "a@x.com", to: "b@y.com",
     #                     subject: "Hi", text: "Hello")
     class SMTPClient
+      include Instrumentation
+
       # Cloudflare requires the literal string "api_token" as the SMTP username;
       # the password is the API token itself.
       SMTP_USERNAME = "api_token"
@@ -44,10 +46,12 @@ module Cloudflare
       # @return [Response]
       def deliver(message)
         message.validate!
-        envelope = build_envelope(message)
-        envelope.delivery_method(:smtp, smtp_settings)
-        transmit(envelope)
-        accepted(envelope)
+        instrument_delivery(:smtp, message) do
+          envelope = build_envelope(message)
+          envelope.delivery_method(:smtp, smtp_settings)
+          transmit(envelope)
+          accepted(envelope)
+        end
       rescue Net::SMTPAuthenticationError => e
         raise AuthenticationError, e.message
       rescue Net::SMTPError => e

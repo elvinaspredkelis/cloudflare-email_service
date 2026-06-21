@@ -15,6 +15,8 @@ module Cloudflare
     #   client.send_email(from: "a@x.com", to: "b@y.com",
     #                     subject: "Hi", text: "Hello")
     class Client
+      include Instrumentation
+
       attr_reader :account_id, :api_token, :api_base, :open_timeout, :timeout
 
       def initialize(account_id: nil, api_token: nil, api_base: nil,
@@ -40,7 +42,8 @@ module Cloudflare
       # Sends a pre-built {Message}.
       # @return [Response]
       def deliver(message)
-        post(send_uri, message.validate!.to_h)
+        message.validate!
+        instrument_delivery(:rest, message) { post(send_uri, message.to_h) }
       end
 
       private

@@ -34,6 +34,12 @@ module Cloudflare
       #   Cloudflare Email Worker signs with.
       attr_accessor :ingress_secret
 
+      # @return [#instrument] receives a "deliver.cloudflare_email_service"
+      #   event on each send. Defaults to ActiveSupport::Notifications when it is
+      #   loaded, otherwise a no-op. Assign any object with an
+      #   `instrument(name, payload) { ... }` method.
+      attr_writer :instrumenter
+
       def initialize
         @transport = ENV.fetch("CLOUDFLARE_EMAIL_TRANSPORT", "rest").to_sym
         @account_id = ENV.fetch("CLOUDFLARE_ACCOUNT_ID", nil)
@@ -44,6 +50,22 @@ module Cloudflare
         @open_timeout = DEFAULT_TIMEOUT
         @timeout = DEFAULT_TIMEOUT
         @ingress_secret = ENV.fetch("CLOUDFLARE_EMAIL_INGRESS_SECRET", nil)
+      end
+
+      # Detected lazily (not in #initialize) so ActiveSupport, often loaded after
+      # the gem, is picked up on first use rather than at require time.
+      def instrumenter
+        @instrumenter ||= default_instrumenter
+      end
+
+      private
+
+      def default_instrumenter
+        if defined?(ActiveSupport::Notifications)
+          ActiveSupport::Notifications
+        else
+          NullInstrumenter
+        end
       end
     end
   end
