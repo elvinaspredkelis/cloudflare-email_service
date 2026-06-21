@@ -8,7 +8,7 @@ require "generators/cloudflare_email_service/install_generator"
 
 class InstallGeneratorTest < Rails::Generators::TestCase
   tests CloudflareEmailService::Generators::InstallGenerator
-  destination File.expand_path("../../../../tmp/generator", __dir__)
+  destination File.expand_path("../../../tmp/generator", __dir__)
   setup :prepare_destination
 
   def test_namespace_matches_the_documented_command
