@@ -286,14 +286,21 @@ in the first place.
 
 In Rails, the idiomatic place is the delivery job: send with `deliver_later` and
 let Active Job retry the transient failures with backoff, while permanent ones
-fail fast.
+fail fast. `retry_on` is an Active Job method, so it goes on the delivery job —
+not on the mailer:
 
 ```ruby
-class ApplicationMailer < ActionMailer::Base
+# app/jobs/cloudflare_mail_delivery_job.rb
+class CloudflareMailDeliveryJob < ActionMailer::MailDeliveryJob
   retry_on Cloudflare::EmailService::RateLimitError, # 429
            Cloudflare::EmailService::ServerError,    # 5xx
            Cloudflare::EmailService::NetworkError,   # timeout, connection reset, TLS
            wait: :polynomially_longer, attempts: 5
+end
+
+# app/mailers/application_mailer.rb
+class ApplicationMailer < ActionMailer::Base
+  self.delivery_job = CloudflareMailDeliveryJob
 end
 ```
 
