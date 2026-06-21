@@ -231,13 +231,10 @@ above) and `CLOUDFLARE_EMAIL_INGRESS_SECRET` (matching the app):
 Visiting the worker's URL returns a `{ ok, configured }` health check — a quick
 way to confirm it's deployed and both vars are set.
 
-The Worker distinguishes permanent from transient ingress failures. A `4xx`
-(bad signature, wrong media type, unprocessable) is rejected permanently so the
-sender is bounced — a retry would never succeed. A `5xx` or network failure
-(a deploy, a brief outage) instead lets the message fail temporarily, so the
-sending server retries delivery once the app recovers, rather than bouncing
-legitimate mail. A long outage can still outlast the sender's retry window, so
-prefer zero-downtime deploys for the ingress.
+On a `4xx` (bad signature, wrong media type) the Worker rejects the message
+permanently; on a `5xx` or network failure it fails temporarily, so the sending
+server retries once the app recovers instead of bouncing good mail. Prefer
+zero-downtime deploys, since a long outage can still outlast the retry window.
 
 > [!NOTE]
 > The Worker sends `Content-Type: message/rfc822`; the ingress rejects anything
@@ -293,11 +290,10 @@ end
 
 ## Retries
 
-This client doesn't retry a failed send — like the official Resend, Postmark,
-Mailgun, and MailPace gems, it raises and leaves the retry policy to you.
-Cloudflare already retries _accepted_ mail server-side (soft bounces, with
-exponential backoff); retries here are only about getting the request accepted
-in the first place.
+This client doesn't retry a failed send — it raises and leaves the retry policy
+to you. Cloudflare already retries _accepted_ mail server-side (soft bounces,
+with exponential backoff); retries here are only about getting the request
+accepted in the first place.
 
 In Rails, the idiomatic place is the delivery job: send with `deliver_later` and
 let Active Job retry the transient failures with backoff, while permanent ones
