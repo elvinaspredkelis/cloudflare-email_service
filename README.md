@@ -276,6 +276,39 @@ end
 
 ---
 
+## Retries
+
+This client doesn't retry a failed send — like the official Resend, Postmark,
+Mailgun, and MailPace gems, it raises and leaves the retry policy to you.
+Cloudflare already retries _accepted_ mail server-side (soft bounces, with
+exponential backoff); retries here are only about getting the request accepted
+in the first place.
+
+In Rails, the idiomatic place is the delivery job: send with `deliver_later` and
+let Active Job retry the transient failures with backoff, while permanent ones
+fail fast.
+
+```ruby
+class ApplicationMailer < ActionMailer::Base
+  retry_on Cloudflare::EmailService::RateLimitError, # 429
+           Cloudflare::EmailService::ServerError,    # 5xx
+           Cloudflare::EmailService::NetworkError,   # timeout, connection reset, TLS
+           wait: :polynomially_longer, attempts: 5
+end
+```
+
+On a `429`, Cloudflare may send a `Retry-After` header. When present it's parsed
+to an integer number of seconds and exposed as `RateLimitError#retry_after`, so
+you can honor the backoff precisely:
+
+```ruby
+rescue Cloudflare::EmailService::RateLimitError => e
+  e.retry_after   # => 30 (seconds), or nil when not provided
+end
+```
+
+---
+
 ## Development
 
 ```sh
