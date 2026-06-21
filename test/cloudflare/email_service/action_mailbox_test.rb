@@ -45,6 +45,30 @@ class ActionMailboxIngressTest < Minitest::Test
   Controller = ActionMailbox::Ingresses::Cloudflare::InboundEmailsController
   SECRET = ENV.fetch("CLOUDFLARE_EMAIL_INGRESS_SECRET")
 
+  # Database-free stand-in for ActionMailbox::InboundEmail: records ingested
+  # bodies and answers #where(message_id:).exists? from a preset id list.
+  class FakeInboundEmail
+    Relation = Struct.new(:exists) { def exists? = exists }
+
+    class << self
+      attr_accessor :existing_ids
+      attr_reader :created
+
+      def reset!
+        @existing_ids = []
+        @created = []
+      end
+
+      def create_and_extract_message_id!(raw)
+        @created << raw
+      end
+
+      def where(message_id:)
+        Relation.new(Array(@existing_ids).include?(message_id))
+      end
+    end
+  end
+
   def setup
     Cloudflare::EmailService.configuration.ingress_secret = SECRET
   end
@@ -121,6 +145,40 @@ class ActionMailboxIngressTest < Minitest::Test
     ActionMailbox.send(:remove_const, :InboundEmail)
   end
 
+  def test_create_skips_duplicate_message_id
+    with_fake_inbound(existing: ["dup@x.com"]) do |fake|
+      controller, statuses = controller_for("Message-ID: <dup@x.com>\r\nFrom: a@x.com\r\n\r\nHi")
+      controller.create
+
+      assert_empty fake.created, "a duplicate Message-ID must not be ingested again"
+      assert_equal [:no_content], statuses
+    end
+  end
+
+  def test_create_ingests_new_message_id
+    with_fake_inbound(existing: []) do |fake|
+      raw = "Message-ID: <fresh@x.com>\r\nFrom: a@x.com\r\n\r\nHi"
+      controller, statuses = controller_for(raw)
+      controller.create
+
+      assert_equal [raw], fake.created
+      assert_equal [:no_content], statuses
+    end
+  end
+
+  def test_create_ingests_message_without_message_id
+    # No Message-ID header -> cannot dedupe; must always ingest even if other
+    # ids are on record.
+    with_fake_inbound(existing: ["dup@x.com"]) do |fake|
+      raw = "From: a@x.com\r\n\r\nHi"
+      controller, statuses = controller_for(raw)
+      controller.create
+
+      assert_equal [raw], fake.created
+      assert_equal [:no_content], statuses
+    end
+  end
+
   def test_create_rejects_empty_body
     controller, statuses = controller_for("")
     controller.create
@@ -142,6 +200,15 @@ class ActionMailboxIngressTest < Minitest::Test
   end
 
   private
+
+  def with_fake_inbound(existing:)
+    FakeInboundEmail.reset!
+    FakeInboundEmail.existing_ids = existing
+    ActionMailbox.const_set(:InboundEmail, FakeInboundEmail)
+    yield FakeInboundEmail
+  ensure
+    ActionMailbox.send(:remove_const, :InboundEmail)
+  end
 
   def controller_for(raw, media_type: "message/rfc822", timestamp: Time.now.to_i, signature: :valid)
     body = raw.to_s

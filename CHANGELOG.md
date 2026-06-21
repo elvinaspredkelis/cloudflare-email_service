@@ -17,6 +17,12 @@ All notable changes to this project are documented here. The format is based on
   HTTP-date), so callers can honor Cloudflare's backoff. The README now
   documents the recommended `deliver_later` + `retry_on` retry pattern.
 
+### Changed
+- The Action Mailbox ingress is now idempotent: a redelivery of a message
+  already on record (same `Message-ID`) is accepted but not ingested again, so
+  a retry within the replay window no longer routes and processes the mail
+  twice. Messages without a parseable `Message-ID` are unaffected.
+
 ## [0.2.0] - 2026-06-19
 
 ### Added

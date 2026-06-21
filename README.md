@@ -210,8 +210,10 @@ config.action_mailbox.ingress = :cloudflare
 
 The route `POST /rails/action_mailbox/cloudflare/inbound_emails` is registered
 for you, and every request is verified by an HMAC-SHA256 signature with replay
-protection. The ingress reads the body via `request.raw_post`, so it works under
-any Rack server — Puma, Falcon, or Unicorn.
+protection. A redelivery of a message already on record (same `Message-ID`) is
+accepted but not ingested again, so a retry doesn't route and process the mail
+twice. The ingress reads the body via `request.raw_post`, so it works under any
+Rack server — Puma, Falcon, or Unicorn.
 
 **2. Deploy an Email Worker** that signs and forwards each message, and bind it
 to an Email Routing rule (or catch-all). One ships with the gem — deploy it

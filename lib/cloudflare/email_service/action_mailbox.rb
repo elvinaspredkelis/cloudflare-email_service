@@ -23,6 +23,10 @@ if defined?(ActionMailbox)
           def create
             if raw_body.empty?
               head :unprocessable_entity
+            elsif already_received?
+              # Idempotent: a retry re-POSTed a message we already have; don't
+              # ingest (and route, and process) it a second time.
+              head :no_content
             else
               ActionMailbox::InboundEmail.create_and_extract_message_id!(raw_body)
               head :no_content
@@ -30,6 +34,27 @@ if defined?(ActionMailbox)
           end
 
           private
+
+          # A Cloudflare/Worker retry can re-deliver the same message within the
+          # replay window with a still-valid signature. Skip creating a second
+          # InboundEmail when one with this Message-ID already exists, so routing
+          # and mailbox processing don't run twice. Messages without a parseable
+          # Message-ID can't be deduplicated and always ingest.
+          def already_received?
+            id = message_id
+            return false if id.nil? || id.empty?
+
+            ActionMailbox::InboundEmail.where(message_id: id).exists?
+          end
+
+          # The message's Message-ID (without angle brackets), extracted the same
+          # way Action Mailbox extracts and stores it. nil when it is absent or
+          # the body can't be parsed.
+          def message_id
+            Mail.from_source(raw_body).message_id
+          rescue StandardError
+            nil
+          end
 
           def verify_signature
             case ::Cloudflare::EmailService::Inbound.verify(
