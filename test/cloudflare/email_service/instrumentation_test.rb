@@ -90,4 +90,21 @@ class InstrumentationTest < CFTestCase
     ES.reset_configuration!
     assert_respond_to ES.configuration.instrumenter, :instrument
   end
+
+  # On failure, SMTP events must carry the gem's mapped error (not the raw
+  # Net::SMTP* exception), so subscribers classify failures the same way across
+  # both transports.
+  def test_smtp_failure_event_records_mapped_gem_error
+    smtp = ES::SMTPClient.new(api_token: "tok")
+    smtp.stub(:transmit, ->(_e) { raise Net::SMTPServerBusy, "451 busy" }) do
+      assert_raises(ES::ServerError) do
+        smtp.send_email(from: "a@x.com", to: "b@y.com", subject: "Hi", text: "Hello")
+      end
+    end
+
+    event = @instrumenter.events.last
+    assert_equal "deliver.cloudflare_email_service", event[:name]
+    assert_equal :smtp, event[:payload][:transport]
+    assert_instance_of ES::ServerError, event[:error]
+  end
 end

@@ -46,21 +46,24 @@ module Cloudflare
       # @return [Response]
       def deliver(message)
         message.validate!
+        # Map errors inside the instrumentation block (not around it) so a
+        # subscriber sees the same gem error classes the caller does — matching
+        # the REST transport, which raises its wrapped errors from within.
         instrument_delivery(:smtp, message) do
           envelope = build_envelope(message)
           envelope.delivery_method(:smtp, smtp_settings)
           transmit(envelope)
           accepted(envelope)
+        rescue Net::SMTPAuthenticationError => e
+          raise AuthenticationError, e.message
+        rescue Net::SMTPError => e
+          # Every other SMTP protocol error (busy, syntax, fatal, unknown, ...).
+          raise ServerError, e.message
+        rescue Timeout::Error, Errno::ECONNREFUSED, Errno::ECONNRESET,
+               Errno::EHOSTUNREACH, Errno::ETIMEDOUT, SocketError, IOError,
+               OpenSSL::SSL::SSLError => e
+          raise NetworkError, "SMTP delivery failed: #{e.class}: #{e.message}"
         end
-      rescue Net::SMTPAuthenticationError => e
-        raise AuthenticationError, e.message
-      rescue Net::SMTPError => e
-        # Every other SMTP protocol error (busy, syntax, fatal, unknown, ...).
-        raise ServerError, e.message
-      rescue Timeout::Error, Errno::ECONNREFUSED, Errno::ECONNRESET,
-             Errno::EHOSTUNREACH, Errno::ETIMEDOUT, SocketError, IOError,
-             OpenSSL::SSL::SSLError => e
-        raise NetworkError, "SMTP delivery failed: #{e.class}: #{e.message}"
       end
 
       private

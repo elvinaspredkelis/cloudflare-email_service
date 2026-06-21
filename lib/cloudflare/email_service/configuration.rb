@@ -52,10 +52,12 @@ module Cloudflare
         @ingress_secret = ENV.fetch("CLOUDFLARE_EMAIL_INGRESS_SECRET", nil)
       end
 
-      # Detected lazily (not in #initialize) so ActiveSupport, often loaded after
-      # the gem, is picked up on first use rather than at require time.
+      # Resolved on each read (never memoized) until one is set explicitly, so
+      # ActiveSupport::Notifications is picked up as soon as it loads — even if
+      # an earlier send already resolved the default to the no-op. An explicit
+      # assignment always wins.
       def instrumenter
-        @instrumenter ||= default_instrumenter
+        @instrumenter || default_instrumenter
       end
 
       private
