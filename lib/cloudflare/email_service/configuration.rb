@@ -16,8 +16,8 @@ module Cloudflare
       # @return [String, nil] Cloudflare account id (CLOUDFLARE_ACCOUNT_ID).
       #   Required for the REST transport; unused by SMTP.
       attr_accessor :account_id
-      # @return [String, nil] API token (CLOUDFLARE_API_TOKEN). REST needs the
-      #   "Email Sending: Send" scope; SMTP needs "Email Sending: Edit".
+      # @return [String, nil] API token (CLOUDFLARE_API_TOKEN). Both transports
+      #   need the account permission "Email Sending Write".
       attr_accessor :api_token
       # @return [String] base URL of the Cloudflare REST API.
       attr_accessor :api_base
