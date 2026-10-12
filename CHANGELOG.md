@@ -6,6 +6,11 @@ All notable changes to this project are documented here. The format is based on
 
 ## [Unreleased]
 
+### Fixed
+- The README and `Configuration#api_token` docs named token permissions that
+  don't exist ("Email Sending: Send" / "Email Sending: Edit"). Both transports
+  need Cloudflare's account permission **Email Sending Write**.
+
 ## [0.3.0] - 2026-06-21
 
 ### Changed

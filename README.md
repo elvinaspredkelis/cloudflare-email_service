@@ -73,8 +73,9 @@ export CLOUDFLARE_ACCOUNT_ID="your-account-id"   # REST only
 export CLOUDFLARE_API_TOKEN="your-api-token"
 ```
 
-REST needs an `Email Sending: Send` token; SMTP needs `Email Sending: Edit` and
-no account id.
+Either transport needs an account API token with the **Email Sending Write**
+permission (Cloudflare's groups are Email Sending Read and Email Sending Write;
+sending is a write). SMTP needs no account id.
 
 ---
 
@@ -125,12 +126,12 @@ Choose one with `config.transport`.
 
 **REST** (`:rest`, the default) posts JSON to the Cloudflare API over HTTPS
 using only `net/http` from the standard library — no MIME assembly, no gems.
-Needs an `account_id` and an `Email Sending: Send` token. The right default for
+Needs an `account_id` and an `Email Sending Write` token. The right default for
 almost everything.
 
 **SMTP** (`:smtp`) submits over `smtp.mx.cloudflare.net:465` (implicit TLS), with
 MIME built by the [`mail`](https://rubygems.org/gems/mail) gem — loaded lazily,
-only when this transport is used. Needs an `Email Sending: Edit` token and no
+only when this transport is used. Needs an `Email Sending Write` token and no
 account id. Reach for it when your environment already speaks SMTP or only
 allows SMTP egress.
 
